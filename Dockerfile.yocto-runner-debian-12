@@ -1,0 +1,43 @@
+FROM debian:12-slim AS base
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get -qq update && apt-get -qq install -y --no-install-recommends \
+    gawk wget git diffstat unzip texinfo gcc build-essential chrpath \
+    socat cpio python3 python3-pip python3-pexpect xz-utils debianutils \
+    iputils-ping python3-git python3-jinja2 libegl1-mesa libsdl1.2-dev \
+    python3-subunit mesa-common-dev zstd liblz4-tool file locales xterm sudo \
+    uuid-runtime sysstat iproute2 openssh-client curl ca-certificates \
+    parted mtools dosfstools jq gpg gpg-agent qemu-utils rsync
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
+
+RUN curl https://storage.googleapis.com/git-repo-downloads/repo > /bin/repo && chmod a+rx /bin/repo
+
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o "/tmp/awscliv2.zip" && \
+    unzip -qq /tmp/awscliv2.zip -d /tmp && /tmp/aws/install && rm -rf /tmp/aws*
+
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then RUNNER_ARCH="amd64"; \
+    elif [ "$ARCH" = "aarch64" ]; then RUNNER_ARCH="arm64"; \
+    else RUNNER_ARCH="$ARCH"; fi && \
+    curl -fsSL "https://code.forgejo.org/forgejo/runner/releases/download/v4.0.1/forgejo-runner-4.0.1-linux-${RUNNER_ARCH}" -o /usr/local/bin/forgejo-runner && \
+    chmod +x /usr/local/bin/forgejo-runner
+
+RUN locale-gen en_US.UTF-8
+
+RUN groupadd -g 1000 yoctouser && useradd -u 1000 -g 1000 -m yoctouser
+RUN groupadd -g 112 docker || true
+RUN usermod -aG 112 yoctouser
+
+RUN echo "yoctouser ALL=(ALL) NOPASSWD: /usr/sbin/sysctl" > /etc/sudoers.d/yoctouser && chmod 0440 /etc/sudoers.d/yoctouser
+
+RUN mkdir -p /nfs && chown -R yoctouser /nfs && chmod -R 755 /nfs
+
+RUN sudo -u yoctouser bash -c 'git config --global user.email "yoctouser@example.com" && \
+    git config --global user.name "yoctouser" && \
+    git config --global init.defaultBranch main'
+
+ENV TMP_DIR=/tmp SSTATE_DIR=/nfs/sstate-cache DL_DIR=/nfs/downloads OUTPUT_DIR=/nfs/build-output BB_ENV_PASSTHROUGH_ADDITIONS="SSTATE_DIR DL_DIR"
+
+USER yoctouser

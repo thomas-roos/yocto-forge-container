@@ -4,9 +4,14 @@ services:
     container_name: forgejo-registry
     restart: always
     ports:
-      - "127.0.0.1:5000:5000"
+      - "5000:5000"
     volumes:
       - ./registry-data:/var/lib/registry
+      - ./registry-htpasswd:/auth/htpasswd:ro
+    environment:
+      - REGISTRY_AUTH=htpasswd
+      - REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm
+      - REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd
     networks:
       - forgejo-net
     profiles:
@@ -45,6 +50,37 @@ services:
       - forgejo-net
     profiles:
       - tunnel
+
+  hashserv:
+    image: ubuntu:22.04
+    container_name: yocto-hashserv
+    command: sh -c "apt-get update && apt-get install -y python3 python3-pip git && pip3 install websockets && [ -d /bitbake ] || git clone --depth 1 https://git.openembedded.org/bitbake /bitbake && /bitbake/bin/bitbake-hashserv --bind wss://0.0.0.0:8686 --database /data/hashserver.db --log INFO --read-only"
+    restart: always
+    ports:
+      - "8686:8686"
+    volumes:
+      - ./hashserv-data:/data
+      - ./yocto-cache/sstate-cache:/sstate-cache:ro
+    networks:
+      - forgejo-net
+    profiles:
+      - hashserv
+
+  sstate-server:
+    image: nginx:alpine
+    container_name: yocto-sstate-server
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./yocto-cache/sstate-cache:/usr/share/nginx/html/sstate-cache:ro
+      - ./yocto-cache/downloads:/usr/share/nginx/html/downloads:ro
+      - ./nginx-sstate.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./sstate-htpasswd:/etc/nginx/.htpasswd:ro
+    networks:
+      - forgejo-net
+    profiles:
+      - sstate-server
 
 networks:
   forgejo-net:
