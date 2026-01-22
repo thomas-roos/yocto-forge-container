@@ -1,0 +1,51 @@
+services:
+  registry:
+    image: registry:2
+    container_name: forgejo-registry
+    restart: always
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./registry-data:/var/lib/registry
+    networks:
+      - forgejo-net
+    profiles:
+      - registry
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:${FORGEJO_VERSION:-14.0.1}
+    container_name: forgejo
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO____APP_NAME=Forgejo
+      - FORGEJO__database__DB_TYPE=sqlite3
+      - FORGEJO__database__PATH=/data/gitea/gitea.db
+      - FORGEJO__server__HTTP_PORT=3000
+      - FORGEJO__server__SSH_PORT=22
+      - FORGEJO__security__INSTALL_LOCK=true
+      - FORGEJO__service__DISABLE_REGISTRATION=true
+      - FORGEJO__service__REQUIRE_SIGNIN_VIEW=false
+    restart: always
+    volumes:
+      - ./forgejo-data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - forgejo-net
+
+  tunnelmole:
+    image: node:20-alpine
+    container_name: forgejo-tunnelmole
+    command: sh -c "apk add --no-cache socat && socat TCP-LISTEN:3000,fork,reuseaddr TCP:forgejo:3000 & npm install -g tunnelmole && tmole 3000"
+    depends_on:
+      - forgejo
+    restart: always
+    networks:
+      - forgejo-net
+    profiles:
+      - tunnel
+
+networks:
+  forgejo-net:
+    driver: bridge

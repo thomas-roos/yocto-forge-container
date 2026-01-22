@@ -1,0 +1,6 @@
+forgejo-data/
+yocto-cache/
+runner-data/
+registry-data/
+.env
+docker-compose.override.yml

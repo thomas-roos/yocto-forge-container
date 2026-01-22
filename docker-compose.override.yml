@@ -1,0 +1,27 @@
+services:
+  runner-ubuntu:
+    build:
+      context: .
+      dockerfile: Dockerfile.yocto-runner-ubuntu
+    image: localhost:5000/yocto-runner-ubuntu:latest
+    container_name: forgejo-runner-ubuntu
+    restart: always
+    environment:
+      - FORGEJO_URL=http://forgejo:3000
+      - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER}
+      - FORGEJO_ADMIN_PASSWORD=${FORGEJO_ADMIN_PASSWORD}
+      - FORGEJO_RUNNER_TOKEN=${FORGEJO_RUNNER_TOKEN}
+      - RUNNER_NAME=runner-ubuntu
+      - RUNNER_LABELS=ubuntu:host
+    volumes:
+      - ./runner-data/ubuntu:/data
+      - ./yocto-cache/sstate-cache:/nfs/sstate-cache
+      - ./yocto-cache/downloads:/nfs/downloads
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./runner-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      - forgejo
+    networks:
+      - forgejo-net
+

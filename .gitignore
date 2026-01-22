@@ -1,0 +1,6 @@
+.env
+.forgejo-admin-password
+forgejo-data/
+yocto-cache/
+runner-data/
+registry-data/
