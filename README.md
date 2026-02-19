@@ -10,6 +10,7 @@ Minimal Docker-based Forgejo setup for Yocto development with Actions runners, s
 - Optional Hash Equivalence server for faster builds
 - Optional HTTP sstate-cache server with password authentication
 - Local Docker registry for runner images
+- SSH tunnel access (secure, recommended)
 - Optional Tunnelmole integration for public access
 - Support for multiple OS-based runners (configurable via .env)
 
@@ -72,21 +73,64 @@ Replace `<server-ip>` with your server's IP address.
    
    The script will display access URLs and SSH tunnel command.
 
-4. **Optional: Start Hash Equivalence and Sstate servers**
+4. **Access Forgejo via SSH tunnel (from your laptop)**
+   ```bash
+   # Create SSH tunnel
+   ssh -L 3000:localhost:3000 user@<server-ip>
+   
+   # Then open in browser: http://localhost:3000
+   ```
+   
+   Replace `user@<server-ip>` with your server credentials.
+
+5. **Optional: Start Hash Equivalence and Sstate servers**
    ```bash
    docker-compose --profile hashserv --profile sstate-server up -d
    ```
 
-5. **Run automated setup**
+6. **Run automated setup**
    ```bash
    ./setup-forgejo.sh
    ```
    
    This creates the admin user account with a random password.
 
-6. **Access Forgejo**
-   - Public URL shown by start script
+7. **Login to Forgejo**
+   - Access via SSH tunnel: http://localhost:3000
    - Login with credentials shown by setup script (also saved in `.forgejo-admin-password`)
+
+## Access Methods
+
+### SSH Tunnel (Recommended)
+
+Forgejo is bound to localhost only for security. Access it via SSH tunnel:
+
+```bash
+# From your laptop, create SSH tunnel
+ssh -L 3000:localhost:3000 user@<server-ip>
+
+# Keep the SSH session open, then access in browser
+http://localhost:3000
+```
+
+**Benefits:**
+- Secure: Not exposed to public internet
+- No additional tools required
+- Works with existing SSH access
+
+### Tunnelmole (Optional Public Access)
+
+For temporary public access without SSH:
+
+```bash
+# Start with Tunnelmole
+./start.sh --tunnel
+
+# Get public URL from logs
+docker-compose logs tunnelmole
+```
+
+Look for output like: `https://abc123.tunnelmole.net is forwarding to http://forgejo:3000`
 
 ## Configuration
 
@@ -169,27 +213,11 @@ Runners attempt automatic registration using:
 3. **Interactive**: Prompts for token if both methods fail
 
 To get a manual token:
-1. Access Forgejo web UI
+1. Access Forgejo web UI via SSH tunnel
 2. Go to Site Administration → Actions → Runners
 3. Click "Create new Runner" and copy the token
 4. Set `FORGEJO_RUNNER_TOKEN` in `.env`
 5. Restart runner: `docker-compose restart runner-ubuntu`
-
-## Using Tunnelmole
-
-To expose Forgejo publicly:
-
-```bash
-docker-compose --profile tunnel up -d
-docker-compose logs -f tunnelmole
-```
-
-Look for output like:
-```
-https://abc123.tunnelmole.net is forwarding to http://forgejo:3000
-```
-
-Use this URL to access Forgejo from anywhere.
 
 ## Using Hash Equivalence Server
 
