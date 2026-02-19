@@ -17,7 +17,7 @@ fi
 echo "Getting runner registration token from Forgejo..."
 
 # Get token via API
-TOKEN=$(docker exec forgejo curl -sf -X POST "http://localhost:3000/api/v1/admin/runners/registration-token" \
+TOKEN=$(podman exec forgejo curl -sf -X POST "http://localhost:3000/api/v1/admin/runners/registration-token" \
   -u "$FORGEJO_ADMIN_USER:$ADMIN_PASSWORD" \
   -H "Content-Type: application/json" 2>/dev/null | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
@@ -28,7 +28,7 @@ if [ -z "$TOKEN" ]; then
   echo "2. Go to Site Administration → Actions → Runners"
   echo "3. Click 'Create new Runner' and copy the token"
   echo "4. Run: echo 'FORGEJO_RUNNER_TOKEN=<your-token>' >> .env"
-  echo "5. Run: docker-compose restart runner-ubuntu"
+  echo "5. Run: podman-compose restart runner-ubuntu"
   exit 1
 fi
 
@@ -42,13 +42,13 @@ else
 fi
 
 echo "Restarting runner..."
-docker-compose restart $(docker-compose ps --services | grep runner) > /dev/null 2>&1
+podman-compose restart $(podman-compose ps --services | grep runner) > /dev/null 2>&1
 
 echo ""
 echo "✅ Runner registration initiated!"
 echo ""
 echo "Check runner status:"
-echo "  docker-compose logs -f runner-ubuntu"
+echo "  podman-compose logs -f runner-ubuntu"
 echo ""
 echo "Verify in Forgejo UI:"
 echo "  Site Administration → Actions → Runners"

@@ -69,7 +69,7 @@ services:
       - hashserv
 
   sstate-server:
-    image: nginx:alpine
+    image: docker.io/library/nginx:alpine
     container_name: yocto-sstate-server
     restart: always
     ports:

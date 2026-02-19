@@ -4,9 +4,10 @@ RUN dnf -y install \
     gawk wget git diffstat unzip texinfo gcc gcc-c++ chrpath \
     socat cpio python3 python3-pip python3-pexpect xz \
     iputils python3-GitPython python3-jinja2 mesa-libEGL SDL-devel \
-    python3-subunit mesa-dri-drivers zstd lz4 file glibc-langpack-en xterm sudo \
+    python3-subunit mesa-dri-drivers zstd lz4 file glibc-langpack-en xterm sudo procps-ng \
     util-linux sysstat iproute openssh-clients curl \
-    parted mtools dosfstools jq gnupg2 qemu-img rsync which findutils
+    parted mtools dosfstools jq gnupg2 qemu-img rsync which findutils \
+    hostname patch rpcgen
 
 RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - && dnf -y install nodejs
 
@@ -23,10 +24,10 @@ RUN ARCH=$(uname -m) && \
     chmod +x /usr/local/bin/forgejo-runner
 
 RUN groupadd -g 1000 yoctouser && useradd -u 1000 -g 1000 -m yoctouser
-RUN groupadd -g 112 docker || true
+RUN groupadd -g 112 podman || true
 RUN usermod -aG 112 yoctouser
 
-RUN echo "yoctouser ALL=(ALL) NOPASSWD: /usr/sbin/sysctl" > /etc/sudoers.d/yoctouser && chmod 0440 /etc/sudoers.d/yoctouser
+RUN echo "yoctouser ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/yoctouser && chmod 0440 /etc/sudoers.d/yoctouser
 
 RUN mkdir -p /nfs && chown -R yoctouser /nfs && chmod -R 755 /nfs
 

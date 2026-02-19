@@ -7,7 +7,6 @@ RUNNER_LABELS="${RUNNER_LABELS:-ubuntu:host}"
 
 # Ensure /data is writable
 mkdir -p /data
-chown -R yoctouser:yoctouser /data
 cd /data
 
 echo "Waiting for Forgejo to be ready..."
@@ -18,7 +17,7 @@ echo "Forgejo is ready!"
 
 if [ -f .runner ]; then
   echo "Runner already registered, starting..."
-  exec sudo -u yoctouser forgejo-runner daemon
+  exec forgejo-runner daemon
 fi
 
 echo "Attempting runner registration..."
@@ -32,24 +31,24 @@ if [ -n "$FORGEJO_ADMIN_USER" ] && [ -n "$FORGEJO_ADMIN_PASSWORD" ]; then
   
   if [ -n "$TOKEN" ]; then
     echo "API registration successful, registering runner..."
-    sudo -u yoctouser forgejo-runner register --no-interactive \
+    forgejo-runner register --no-interactive \
       --instance "$FORGEJO_URL" \
       --token "$TOKEN" \
       --name "$RUNNER_NAME" \
       --labels "$RUNNER_LABELS"
-    exec sudo -u yoctouser forgejo-runner daemon
+    exec forgejo-runner daemon
   fi
   echo "API registration failed, trying manual token..."
 fi
 
 if [ -n "$FORGEJO_RUNNER_TOKEN" ]; then
   echo "Using manual token from environment..."
-  sudo -u yoctouser forgejo-runner register --no-interactive \
+  forgejo-runner register --no-interactive \
     --instance "$FORGEJO_URL" \
     --token "$FORGEJO_RUNNER_TOKEN" \
     --name "$RUNNER_NAME" \
     --labels "$RUNNER_LABELS"
-  exec sudo -u yoctouser forgejo-runner daemon
+  exec forgejo-runner daemon
 fi
 
 echo "ERROR: No registration method available!"

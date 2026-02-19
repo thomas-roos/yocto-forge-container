@@ -4,7 +4,7 @@
 set -e
 
 echo "Stopping all services..."
-docker-compose --profile registry --profile tunnel down
+podman-compose --profile registry --profile tunnel down
 
 if [ "$1" == "--clean-data" ]; then
   echo "Removing all data directories..."

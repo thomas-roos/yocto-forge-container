@@ -12,7 +12,7 @@ if [ "$1" == "--tunnel" ] || [ "$2" == "--tunnel" ]; then
 fi
 
 echo "Starting services..."
-docker-compose $PROFILES up -d
+podman-compose $PROFILES up -d
 
 echo ""
 echo "✅ Services started!"
@@ -22,11 +22,11 @@ echo ""
 SERVER_IP=$(hostname -I | awk '{print $1}')
 
 # Check if tunnelmole is running
-if docker ps --filter "name=forgejo-tunnelmole" --format "{{.Names}}" | grep -q tunnelmole; then
+if podman ps --filter "name=forgejo-tunnelmole" --format "{{.Names}}" | grep -q tunnelmole; then
   echo "Waiting for Tunnelmole to establish connection..."
   sleep 10
   
-  TUNNEL_URL=$(docker logs forgejo-tunnelmole 2>&1 | grep -o 'https://[^[:space:]]*tunnelmole.net' | head -1)
+  TUNNEL_URL=$(podman logs forgejo-tunnelmole 2>&1 | grep -o 'https://[^[:space:]]*tunnelmole.net' | head -1)
   
   if [ -n "$TUNNEL_URL" ]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -35,7 +35,7 @@ if docker ps --filter "name=forgejo-tunnelmole" --format "{{.Names}}" | grep -q 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   else
     echo "⚠️  Tunnelmole URL not yet available. Check logs:"
-    echo "   docker logs forgejo-tunnelmole"
+    echo "   podman logs forgejo-tunnelmole"
   fi
 else
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -50,5 +50,5 @@ fi
 echo ""
 echo "Next steps:"
 echo "  1. Run setup: ./setup-forgejo.sh"
-echo "  2. Check logs: docker-compose logs -f"
-echo "  3. Stop services: docker-compose down"
+echo "  2. Check logs: podman-compose logs -f"
+echo "  3. Stop services: podman-compose down"

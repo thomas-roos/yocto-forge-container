@@ -49,7 +49,8 @@ for runner in "${RUNNER_LIST[@]}"; do
     image: ${REGISTRY_URL}/${runner}:latest
     container_name: forgejo-runner-$runner_name-$i
     restart: always
-    user: "0:0"
+    user: "1000:1000"
+    privileged: true
     environment:
       - FORGEJO_URL=http://forgejo:3000
       - FORGEJO_ADMIN_USER=\${FORGEJO_ADMIN_USER}
@@ -60,12 +61,12 @@ for runner in "${RUNNER_LIST[@]}"; do
       - USER_ID=1000
       - GROUP_ID=1000
     volumes:
-      - ./runner-data/$runner_name-$i:/data
+      - ./runner-data/$runner_name-$i:/data:U
       - ./yocto-cache/sstate-cache:/nfs/sstate-cache
       - ./yocto-cache/downloads:/nfs/downloads
       - ./yocto-cache/tmp:/nfs/tmp
-      - ./yocto-builds/$runner_name-$i:/home/yoctouser/.cache/act
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ./yocto-builds/$runner_name-$i:/home/yoctouser/.cache/act:U
+      - \${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
       - $ENTRYPOINT:/entrypoint.sh:ro
     entrypoint: ["/entrypoint.sh"]
     depends_on:
@@ -80,10 +81,10 @@ done
 echo "Generated docker-compose.override.yml with runners: ${RUNNER_LIST[*]}"
 echo ""
 echo "To start services:"
-echo "  docker-compose $REGISTRY_PROFILE up -d"
+echo "  podman-compose $REGISTRY_PROFILE up -d"
 echo ""
 echo "To enable Tunnelmole:"
-echo "  docker-compose $REGISTRY_PROFILE --profile tunnel up -d"
+echo "  podman-compose $REGISTRY_PROFILE --profile tunnel up -d"
 echo ""
 echo "After starting with Tunnelmole, get the public URL:"
-echo "  docker logs forgejo-tunnelmole 2>&1 | grep 'https://.*tunnelmole.net'"
+echo "  podman logs forgejo-tunnelmole 2>&1 | grep 'https://.*tunnelmole.net'"

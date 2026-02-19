@@ -2,10 +2,10 @@
 
 ## ✅ What Was Built
 
-A minimal, Docker-based Forgejo setup for Yocto development with:
+A minimal, Podman-based Forgejo setup for Yocto development with:
 
 - **Forgejo v14.0.1** - Git service (no external ports, internal only)
-- **Local Docker Registry** - For storing runner images (localhost:5000)
+- **Local Container Registry** - For storing runner images (localhost:5000)
 - **Yocto Actions Runners** - Dynamically configured based on Dockerfiles
 - **Tunnelmole Integration** - Optional public access via HTTPS tunnel
 - **Automated Setup** - One-command installation and configuration
@@ -19,8 +19,8 @@ yocto-forge-container/
 ├── .env                            # Your configuration (gitignored)
 ├── .gitignore                      # Excludes data dirs and .env
 ├── .dockerignore                   # Excludes data from build context
-├── docker-compose.yml              # Core services definition
-├── docker-compose.override.yml     # Generated runner services
+├── podman-compose.yml              # Core services definition
+├── podman-compose.override.yml     # Generated runner services
 ├── Dockerfile.yocto-runner-ubuntu  # Ubuntu-based Yocto runner
 ├── generate-compose.sh             # Generates runner services from RUNNERS env var
 ├── runner-entrypoint.sh            # Hybrid registration logic for runners
@@ -31,7 +31,7 @@ yocto-forge-container/
 │   ├── sstate-cache/               # Shared Yocto state cache
 │   └── downloads/                  # Shared Yocto downloads
 ├── runner-data/                    # Runner registration data (gitignored)
-└── registry-data/                  # Docker registry storage (gitignored)
+└── registry-data/                  # Container registry storage (gitignored)
 ```
 
 ## 🚀 Quick Start
@@ -46,7 +46,7 @@ cp .env.example .env
 ./generate-compose.sh
 
 # 3. Start services
-docker-compose --profile registry --profile tunnel up -d
+podman-compose --profile registry --profile tunnel up -d
 
 # 4. Wait 20 seconds for services to start, then run automated setup
 sleep 20 && ./setup-forgejo.sh
@@ -80,19 +80,19 @@ FORGEJO_VERSION=14.0.1
 1. Create `Dockerfile.yocto-runner-debian` or `Dockerfile.yocto-runner-fedora`
 2. Update `.env`: `RUNNERS=yocto-runner-ubuntu,yocto-runner-debian`
 3. Run `./generate-compose.sh`
-4. Restart: `docker-compose up -d`
+4. Restart: `podman-compose up -d`
 
 ## 🔐 Security Features
 
 - **No external ports** - Only accessible via Tunnelmole when enabled
 - **Local registry** - Bound to 127.0.0.1:5000 only
-- **Isolated network** - All services on private Docker network
+- **Isolated network** - All services on private Podman network
 - **Secure by default** - External access only when explicitly enabled
 
 ## ✅ Tested Components
 
 1. ✅ Configuration generation (.env.example)
-2. ✅ Docker Compose validation
+2. ✅ Podman Compose validation
 3. ✅ Local registry (running on 127.0.0.1:5000)
 4. ✅ Forgejo service (v14.0.1)
 5. ✅ Yocto runner image build (~2.3GB)
@@ -105,7 +105,7 @@ FORGEJO_VERSION=14.0.1
 
 The setup is ready for use! To complete the deployment:
 
-1. Start services: `docker-compose --profile registry --profile tunnel up -d`
+1. Start services: `podman-compose --profile registry --profile tunnel up -d`
 2. Run setup: `./setup-forgejo.sh`
 3. Access Forgejo via the Tunnelmole URL shown
 4. Create repositories and start building Yocto images!

@@ -1,6 +1,6 @@
 # Forgejo for Yocto Development
 
-Minimal Docker-based Forgejo setup for Yocto development with Actions runners, shared caches, and optional public access via Tunnelmole.
+Minimal Podman-based Forgejo setup for Yocto development with Actions runners, shared caches, and optional public access via Tunnelmole.
 
 ## Features
 
@@ -9,7 +9,7 @@ Minimal Docker-based Forgejo setup for Yocto development with Actions runners, s
 - Shared Yocto caches (sstate-cache, downloads) across builds
 - Optional Hash Equivalence server for faster builds
 - Optional HTTP sstate-cache server with password authentication
-- Local Docker registry for runner images
+- Local container registry for runner images
 - SSH tunnel access (secure, recommended)
 - Optional Tunnelmole integration for public access
 - Support for multiple OS-based runners (configurable via .env)
@@ -18,7 +18,7 @@ Minimal Docker-based Forgejo setup for Yocto development with Actions runners, s
 
 **Start all services including hash and sstate servers:**
 ```bash
-docker-compose --profile registry --profile tunnel --profile hashserv --profile sstate-server up -d
+podman-compose --profile registry --profile tunnel --profile hashserv --profile sstate-server up -d
 ```
 
 **Use shared build cache in your Yocto builds:**
@@ -46,8 +46,8 @@ Replace `<server-ip>` with your server's IP address.
 
 ## Prerequisites
 
-- Docker
-- Docker Compose
+- Podman
+- Podman Compose
 
 ## Quick Start
 
@@ -85,7 +85,7 @@ Replace `<server-ip>` with your server's IP address.
 
 5. **Optional: Start Hash Equivalence and Sstate servers**
    ```bash
-   docker-compose --profile hashserv --profile sstate-server up -d
+   podman-compose --profile hashserv --profile sstate-server up -d
    ```
 
 6. **Run automated setup**
@@ -127,7 +127,7 @@ For temporary public access without SSH:
 ./start.sh --tunnel
 
 # Get public URL from logs
-docker-compose logs tunnelmole
+podman-compose logs tunnelmole
 ```
 
 Look for output like: `https://abc123.tunnelmole.net is forwarding to http://forgejo:3000`
@@ -159,19 +159,19 @@ The registry is password protected and accessible on the network:
 
 ```bash
 # Login to registry
-docker login 172.31.34.190:5000
+podman login 172.31.34.190:5000
 # Username: yocto
 # Password: changeme123
 
 # Build and push runner image
-docker build -f Dockerfile.yocto-runner-ubuntu-22.04 -t 172.31.34.190:5000/yocto-runner-ubuntu-22.04:latest .
-docker push 172.31.34.190:5000/yocto-runner-ubuntu-22.04:latest
+podman build -f Dockerfile.yocto-runner-ubuntu-22.04 -t 172.31.34.190:5000/yocto-runner-ubuntu-22.04:latest .
+podman push 172.31.34.190:5000/yocto-runner-ubuntu-22.04:latest
 ```
 
 **To change registry password:**
 ```bash
-docker run --rm --entrypoint htpasswd httpd:alpine -Bbn yocto <new-password> > registry-htpasswd
-docker-compose --profile registry restart
+podman run --rm --entrypoint htpasswd httpd:alpine -Bbn yocto <new-password> > registry-htpasswd
+podman-compose --profile registry restart
 ```
 
 ## Adding Custom Runners
@@ -187,7 +187,7 @@ docker-compose --profile registry restart
    ```
 4. Restart services:
    ```bash
-   docker-compose up -d
+   podman-compose up -d
    ```
 
 ## Directory Structure
@@ -202,7 +202,7 @@ docker-compose --profile registry restart
 ├── runner-data/
 │   ├── ubuntu/             # Runner registration data
 │   └── ...
-└── registry-data/          # Local Docker registry storage
+└── registry-data/          # Local container registry storage
 ```
 
 ## Runner Registration
@@ -217,7 +217,7 @@ To get a manual token:
 2. Go to Site Administration → Actions → Runners
 3. Click "Create new Runner" and copy the token
 4. Set `FORGEJO_RUNNER_TOKEN` in `.env`
-5. Restart runner: `docker-compose restart runner-ubuntu`
+5. Restart runner: `podman-compose restart runner-ubuntu`
 
 ## Using Hash Equivalence Server
 
@@ -225,7 +225,7 @@ The hash equivalence server speeds up builds by reusing build outputs with equiv
 
 1. **Start the server:**
    ```bash
-   docker-compose --profile hashserv up -d
+   podman-compose --profile hashserv up -d
    ```
 
 2. **Configure your Yocto build** (in `local.conf` or workflow):
@@ -249,14 +249,14 @@ Share your sstate-cache over HTTP with password authentication:
 
 1. **Generate password file** (first time only):
    ```bash
-   docker run --rm httpd:alpine htpasswd -nbB yocto <your-password> > sstate-htpasswd
+   podman run --rm httpd:alpine htpasswd -nbB yocto <your-password> > sstate-htpasswd
    ```
    
    Default credentials are already generated: `yocto` / `changeme123`
 
 2. **Start the server:**
    ```bash
-   docker-compose --profile sstate-server up -d
+   podman-compose --profile sstate-server up -d
    ```
 
 3. **Configure authentication** on the client machine (where you run Yocto builds):
@@ -309,22 +309,22 @@ Share your sstate-cache over HTTP with password authentication:
 ## Troubleshooting
 
 **Runner not registering:**
-- Check runner logs: `docker-compose logs runner-ubuntu`
+- Check runner logs: `podman-compose logs runner-ubuntu`
 - Verify admin credentials match Forgejo setup
 - Try manual token registration
 
 **Registry connection issues:**
-- Ensure registry is running: `docker-compose ps registry`
+- Ensure registry is running: `podman-compose ps registry`
 - Check registry URL in .env matches your setup
-- For external registry, ensure it's accessible from Docker network
+- For external registry, ensure it's accessible from Podman network
 
 **Yocto build failures:**
 - Verify shared cache directories exist and are writable
-- Check runner has access to Docker socket
+- Check runner has access to Podman socket
 - Review runner logs for specific errors
 
 **Tunnelmole not working:**
-- Check tunnelmole logs: `docker-compose logs tunnelmole`
+- Check tunnelmole logs: `podman-compose logs tunnelmole`
 - Ensure forgejo service is running
 - Free tier has bandwidth limits
 
@@ -332,8 +332,8 @@ Share your sstate-cache over HTTP with password authentication:
 
 ```bash
 # Stop all services
-docker-compose --profile registry --profile tunnel down
+podman-compose --profile registry --profile tunnel down
 
 # Stop and remove volumes (WARNING: deletes all data)
-docker-compose --profile registry --profile tunnel down -v
+podman-compose --profile registry --profile tunnel down -v
 ```

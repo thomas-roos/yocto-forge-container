@@ -6,7 +6,8 @@ services:
     image: 172.31.34.190:5000/yocto-runner-ubuntu-22.04:latest
     container_name: forgejo-runner-ubuntu-22.04-1
     restart: always
-    user: "0:0"
+    user: "1000:1000"
+    privileged: true
     environment:
       - FORGEJO_URL=http://forgejo:3000
       - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER}
@@ -17,13 +18,205 @@ services:
       - USER_ID=1000
       - GROUP_ID=1000
     volumes:
-      - ./runner-data/ubuntu-22.04-1:/data
+      - ./runner-data/ubuntu-22.04-1:/data:U
       - ./yocto-cache/sstate-cache:/nfs/sstate-cache
       - ./yocto-cache/downloads:/nfs/downloads
       - ./yocto-cache/tmp:/nfs/tmp
-      - ./yocto-builds/ubuntu-22.04-1:/home/yoctouser/.cache/act
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ./yocto-builds/ubuntu-22.04-1:/home/yoctouser/.cache/act:U
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
       - ./runner-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      - forgejo
+    networks:
+      - forgejo-net
+
+  runner-ubuntu-24.04-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.yocto-runner-ubuntu-24.04
+    image: 172.31.34.190:5000/yocto-runner-ubuntu-24.04:latest
+    container_name: forgejo-runner-ubuntu-24.04-1
+    restart: always
+    user: "1000:1000"
+    privileged: true
+    environment:
+      - FORGEJO_URL=http://forgejo:3000
+      - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER}
+      - FORGEJO_ADMIN_PASSWORD=${FORGEJO_ADMIN_PASSWORD}
+      - FORGEJO_RUNNER_TOKEN=${FORGEJO_RUNNER_TOKEN}
+      - RUNNER_NAME=runner-ubuntu-24.04-1
+      - RUNNER_LABELS=ubuntu-24.04:host
+      - USER_ID=1000
+      - GROUP_ID=1000
+    volumes:
+      - ./runner-data/ubuntu-24.04-1:/data:U
+      - ./yocto-cache/sstate-cache:/nfs/sstate-cache
+      - ./yocto-cache/downloads:/nfs/downloads
+      - ./yocto-cache/tmp:/nfs/tmp
+      - ./yocto-builds/ubuntu-24.04-1:/home/yoctouser/.cache/act:U
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
+      - ./runner-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      - forgejo
+    networks:
+      - forgejo-net
+
+  runner-debian-12-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.yocto-runner-debian-12
+    image: 172.31.34.190:5000/yocto-runner-debian-12:latest
+    container_name: forgejo-runner-debian-12-1
+    restart: always
+    user: "1000:1000"
+    privileged: true
+    environment:
+      - FORGEJO_URL=http://forgejo:3000
+      - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER}
+      - FORGEJO_ADMIN_PASSWORD=${FORGEJO_ADMIN_PASSWORD}
+      - FORGEJO_RUNNER_TOKEN=${FORGEJO_RUNNER_TOKEN}
+      - RUNNER_NAME=runner-debian-12-1
+      - RUNNER_LABELS=debian-12:host
+      - USER_ID=1000
+      - GROUP_ID=1000
+    volumes:
+      - ./runner-data/debian-12-1:/data:U
+      - ./yocto-cache/sstate-cache:/nfs/sstate-cache
+      - ./yocto-cache/downloads:/nfs/downloads
+      - ./yocto-cache/tmp:/nfs/tmp
+      - ./yocto-builds/debian-12-1:/home/yoctouser/.cache/act:U
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
+      - ./runner-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      - forgejo
+    networks:
+      - forgejo-net
+
+  runner-debian-13-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.yocto-runner-debian-13
+    image: 172.31.34.190:5000/yocto-runner-debian-13:latest
+    container_name: forgejo-runner-debian-13-1
+    restart: always
+    user: "1000:1000"
+    privileged: true
+    environment:
+      - FORGEJO_URL=http://forgejo:3000
+      - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER}
+      - FORGEJO_ADMIN_PASSWORD=${FORGEJO_ADMIN_PASSWORD}
+      - FORGEJO_RUNNER_TOKEN=${FORGEJO_RUNNER_TOKEN}
+      - RUNNER_NAME=runner-debian-13-1
+      - RUNNER_LABELS=debian-13:host
+      - USER_ID=1000
+      - GROUP_ID=1000
+    volumes:
+      - ./runner-data/debian-13-1:/data:U
+      - ./yocto-cache/sstate-cache:/nfs/sstate-cache
+      - ./yocto-cache/downloads:/nfs/downloads
+      - ./yocto-cache/tmp:/nfs/tmp
+      - ./yocto-builds/debian-13-1:/home/yoctouser/.cache/act:U
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
+      - ./runner-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      - forgejo
+    networks:
+      - forgejo-net
+
+  runner-fedora-42-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.yocto-runner-fedora-42
+    image: 172.31.34.190:5000/yocto-runner-fedora-42:latest
+    container_name: forgejo-runner-fedora-42-1
+    restart: always
+    user: "1000:1000"
+    privileged: true
+    environment:
+      - FORGEJO_URL=http://forgejo:3000
+      - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER}
+      - FORGEJO_ADMIN_PASSWORD=${FORGEJO_ADMIN_PASSWORD}
+      - FORGEJO_RUNNER_TOKEN=${FORGEJO_RUNNER_TOKEN}
+      - RUNNER_NAME=runner-fedora-42-1
+      - RUNNER_LABELS=fedora-42:host
+      - USER_ID=1000
+      - GROUP_ID=1000
+    volumes:
+      - ./runner-data/fedora-42-1:/data:U
+      - ./yocto-cache/sstate-cache:/nfs/sstate-cache
+      - ./yocto-cache/downloads:/nfs/downloads
+      - ./yocto-cache/tmp:/nfs/tmp
+      - ./yocto-builds/fedora-42-1:/home/yoctouser/.cache/act:U
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
+      - ./runner-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      - forgejo
+    networks:
+      - forgejo-net
+
+  runner-fedora-43-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.yocto-runner-fedora-43
+    image: 172.31.34.190:5000/yocto-runner-fedora-43:latest
+    container_name: forgejo-runner-fedora-43-1
+    restart: always
+    user: "1000:1000"
+    privileged: true
+    environment:
+      - FORGEJO_URL=http://forgejo:3000
+      - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER}
+      - FORGEJO_ADMIN_PASSWORD=${FORGEJO_ADMIN_PASSWORD}
+      - FORGEJO_RUNNER_TOKEN=${FORGEJO_RUNNER_TOKEN}
+      - RUNNER_NAME=runner-fedora-43-1
+      - RUNNER_LABELS=fedora-43:host
+      - USER_ID=1000
+      - GROUP_ID=1000
+    volumes:
+      - ./runner-data/fedora-43-1:/data:U
+      - ./yocto-cache/sstate-cache:/nfs/sstate-cache
+      - ./yocto-cache/downloads:/nfs/downloads
+      - ./yocto-cache/tmp:/nfs/tmp
+      - ./yocto-builds/fedora-43-1:/home/yoctouser/.cache/act:U
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
+      - ./runner-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      - forgejo
+    networks:
+      - forgejo-net
+
+  runner-crops-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.yocto-runner-crops
+    image: 172.31.34.190:5000/yocto-runner-crops:latest
+    container_name: forgejo-runner-crops-1
+    restart: always
+    user: "1000:1000"
+    privileged: true
+    environment:
+      - FORGEJO_URL=http://forgejo:3000
+      - FORGEJO_ADMIN_USER=${FORGEJO_ADMIN_USER}
+      - FORGEJO_ADMIN_PASSWORD=${FORGEJO_ADMIN_PASSWORD}
+      - FORGEJO_RUNNER_TOKEN=${FORGEJO_RUNNER_TOKEN}
+      - RUNNER_NAME=runner-crops-1
+      - RUNNER_LABELS=crops:host
+      - USER_ID=1000
+      - GROUP_ID=1000
+    volumes:
+      - ./runner-data/crops-1:/data:U
+      - ./yocto-cache/sstate-cache:/nfs/sstate-cache
+      - ./yocto-cache/downloads:/nfs/downloads
+      - ./yocto-cache/tmp:/nfs/tmp
+      - ./yocto-builds/crops-1:/home/yoctouser/.cache/act:U
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
+      - ./runner-entrypoint-crops.sh:/entrypoint.sh:ro
     entrypoint: ["/entrypoint.sh"]
     depends_on:
       - forgejo
