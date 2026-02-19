@@ -1,5 +1,6 @@
 forgejo-data/
 yocto-cache/
+yocto-builds/
 runner-data/
 registry-data/
 .env

@@ -63,14 +63,14 @@ Replace `<server-ip>` with your server's IP address.
 
 3. **Start services**
    ```bash
-   # With Tunnelmole for public access (recommended)
-   ./start.sh --tunnel
-   
-   # Or without Tunnelmole (internal only)
+   # Local/SSH tunnel access (recommended)
    ./start.sh
+   
+   # Or with Tunnelmole for public access
+   ./start.sh --tunnel
    ```
    
-   The script will display the public URL automatically.
+   The script will display access URLs and SSH tunnel command.
 
 4. **Optional: Start Hash Equivalence and Sstate servers**
    ```bash

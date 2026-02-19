@@ -2,5 +2,9 @@
 .forgejo-admin-password
 forgejo-data/
 yocto-cache/
+yocto-builds/
 runner-data/
 registry-data/
+hashserv-data/
+sstate-htpasswd
+registry-htpasswd

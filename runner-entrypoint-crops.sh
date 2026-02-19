@@ -5,16 +5,27 @@ FORGEJO_URL="${FORGEJO_URL:-http://forgejo:3000}"
 RUNNER_NAME="${RUNNER_NAME:-runner}"
 RUNNER_LABELS="${RUNNER_LABELS:-ubuntu:host}"
 
-# Ensure /data is writable
-mkdir -p /data
-chown -R yoctouser:yoctouser /data
-cd /data
+# Setup user with host UID/GID
+USER_ID=${USER_ID:-1000}
+GROUP_ID=${GROUP_ID:-1000}
+
+echo "Setting up user with UID=$USER_ID, GID=$GROUP_ID"
+
+# Update yoctouser to match host UID/GID
+groupmod -o -g "$GROUP_ID" yoctouser 2>/dev/null || true
+usermod -o -u "$USER_ID" yoctouser 2>/dev/null || true
+
+# Ensure directories are writable
+chown -R yoctouser:yoctouser /data /nfs
 
 echo "Waiting for Forgejo to be ready..."
 until curl -sf "$FORGEJO_URL" > /dev/null 2>&1; do
   sleep 2
 done
 echo "Forgejo is ready!"
+
+# Switch to yoctouser for runner operations
+cd /data
 
 if [ -f .runner ]; then
   echo "Runner already registered, starting..."
@@ -53,13 +64,4 @@ if [ -n "$FORGEJO_RUNNER_TOKEN" ]; then
 fi
 
 echo "ERROR: No registration method available!"
-echo "Please set either:"
-echo "  - FORGEJO_ADMIN_USER and FORGEJO_ADMIN_PASSWORD for API registration"
-echo "  - FORGEJO_RUNNER_TOKEN for manual registration"
-echo ""
-echo "To get a manual token:"
-echo "  1. Access Forgejo web UI"
-echo "  2. Go to Site Administration → Actions → Runners"
-echo "  3. Click 'Create new Runner' and copy the token"
-echo "  4. Set FORGEJO_RUNNER_TOKEN in .env and restart"
 exit 1

@@ -34,6 +34,13 @@ for runner in "${RUNNER_LIST[@]}"; do
   runner_name=$(echo "$runner" | sed 's/yocto-runner-//')
   
   for i in $(seq 1 $RUNNER_REPLICAS); do
+    # Determine entrypoint based on runner type
+    if [[ "$runner" == *"crops"* ]]; then
+      ENTRYPOINT="./runner-entrypoint-crops.sh"
+    else
+      ENTRYPOINT="./runner-entrypoint.sh"
+    fi
+    
     cat >> docker-compose.override.yml << EOF
   runner-$runner_name-$i:
     build:
@@ -42,6 +49,7 @@ for runner in "${RUNNER_LIST[@]}"; do
     image: ${REGISTRY_URL}/${runner}:latest
     container_name: forgejo-runner-$runner_name-$i
     restart: always
+    user: "0:0"
     environment:
       - FORGEJO_URL=http://forgejo:3000
       - FORGEJO_ADMIN_USER=\${FORGEJO_ADMIN_USER}
@@ -49,13 +57,16 @@ for runner in "${RUNNER_LIST[@]}"; do
       - FORGEJO_RUNNER_TOKEN=\${FORGEJO_RUNNER_TOKEN}
       - RUNNER_NAME=runner-$runner_name-$i
       - RUNNER_LABELS=$runner_name:host
+      - USER_ID=1000
+      - GROUP_ID=1000
     volumes:
       - ./runner-data/$runner_name-$i:/data
       - ./yocto-cache/sstate-cache:/nfs/sstate-cache
       - ./yocto-cache/downloads:/nfs/downloads
+      - ./yocto-cache/tmp:/nfs/tmp
       - ./yocto-builds/$runner_name-$i:/home/yoctouser/.cache/act
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./runner-entrypoint.sh:/entrypoint.sh:ro
+      - $ENTRYPOINT:/entrypoint.sh:ro
     entrypoint: ["/entrypoint.sh"]
     depends_on:
       - forgejo
