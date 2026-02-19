@@ -7,7 +7,7 @@ RUN dnf -y install \
     python3-subunit mesa-dri-drivers zstd lz4 file glibc-langpack-en xterm sudo procps-ng \
     util-linux sysstat iproute openssh-clients curl \
     parted mtools dosfstools jq gnupg2 qemu-img rsync which findutils \
-    hostname patch rpcgen
+    hostname patch rpcgen perl-Thread-Queue perl-FindBin perl-open
 
 RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - && dnf -y install nodejs
 
