@@ -65,11 +65,11 @@ for runner in "${RUNNER_LIST[@]}"; do
       - USER_ID=$USER_ID
       - GROUP_ID=$GROUP_ID
     volumes:
-      - ./runner-data/$runner_name-$i:/data:U
+      - ./runner-data/$runner_name-$i:/data:Z
       - ./yocto-cache/sstate-cache:/nfs/sstate-cache
       - ./yocto-cache/downloads:/nfs/downloads
       - ./yocto-cache/tmp:/nfs/tmp
-      - ./yocto-builds/$runner_name-$i:/home/yoctouser/.cache/act:U
+      - ./yocto-builds/$runner_name-$i:/home/yoctouser/.cache/act:Z
       - \${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/docker.sock
       - $ENTRYPOINT:/entrypoint.sh:ro
     entrypoint: ["/entrypoint.sh"]
