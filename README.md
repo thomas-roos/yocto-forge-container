@@ -332,6 +332,10 @@ graph TB
         TM[Tunnelmole<br/>Optional Public Access]
     end
 
+    subgraph "Developer Laptops"
+        DEV[Local Yocto Builds<br/>Read-only cache access]
+    end
+
     subgraph "Single Host - Podman"
         subgraph "Forgejo Service"
             FG[Forgejo<br/>Git + Actions<br/>Port 3000]
@@ -388,6 +392,9 @@ graph TB
     SS -.Serve.-> SC
     SS -.Serve.-> DL
 
+    DEV -.HTTP read-only.-> SS
+    DEV -.WebSocket read-only.-> HS
+
     style SSH fill:#e1f5ff
     style TM fill:#fff4e1
     style FG fill:#e8f5e9
@@ -397,6 +404,7 @@ graph TB
     style SC fill:#ffebee
     style DL fill:#ffebee
     style TMP fill:#ffebee
+    style DEV fill:#e1f5ff
 ```
 
 ### Build Data Flow
