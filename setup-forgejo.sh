@@ -10,6 +10,11 @@ until podman exec $FORGEJO_CONTAINER curl -sf http://localhost:3000 > /dev/null 
   sleep 2
 done
 
+echo "Waiting for Forgejo configuration..."
+until podman exec $FORGEJO_CONTAINER test -f /data/gitea/conf/app.ini 2>/dev/null; do
+  sleep 2
+done
+
 echo "Checking if admin user exists..."
 if podman exec -u git $FORGEJO_CONTAINER gitea admin user list --config /data/gitea/conf/app.ini 2>/dev/null | grep -q "$FORGEJO_ADMIN_USER"; then
   echo "Admin user '$FORGEJO_ADMIN_USER' already exists!"
@@ -61,8 +66,8 @@ echo "  Password: $RANDOM_PASSWORD"
 echo ""
 echo "⚠️  Password saved to: .forgejo-admin-password"
 echo ""
-echo "Restarting runner to trigger auto-registration..."
-podman-compose restart $(podman-compose ps --services | grep runner) 2>/dev/null || true
+echo "Restarting runners to trigger auto-registration..."
+podman-compose restart 2>/dev/null || true
 
 echo ""
 echo "Check runner registration status:"
