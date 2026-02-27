@@ -138,6 +138,10 @@ Note: Tunnelmole URL changes on each restart (free tier) and has bandwidth limit
 
 ## Using Shared Build Cache
 
+Development laptops can consume the same sstate-cache and downloads used by the CI runners, massively speeding up local builds. By pointing your local Yocto setup at the server's HTTP cache and hash equivalence service, most build steps become cache hits instead of full rebuilds.
+
+It is recommended that developer machines use the cache in read-only mode (the default for HTTP/WebSocket clients) so that only CI runners populate the shared cache with validated artifacts. If developers also write to the cache, inconsistent or broken artifacts could affect all users.
+
 ### Client Configuration
 
 Set up authentication and Yocto configuration on machines consuming the cache. Replace `<server-ip>` with your server's IP address.
