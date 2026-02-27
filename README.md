@@ -2,8 +2,7 @@
 
 Podman-based Forgejo setup for Yocto development with Actions runners, shared caches, and optional public access via Tunnelmole.
 
-**Repository:** https://github.com/thomas-roos/yocto-forge-container
-**Status:** POC — successfully deployed and tested on EC2. See [Production Readiness](#production-readiness) for what a scaled deployment could look like.
+**Status:** POC — successfully deployed and tested on EC2. Designed for easy, fast setup on a single host — not for scale. See [Production Readiness](#production-readiness) for what a scaled deployment could look like.
 
 ## Features
 
