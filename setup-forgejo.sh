@@ -11,7 +11,7 @@ until podman exec $FORGEJO_CONTAINER curl -sf http://localhost:3000 > /dev/null 
 done
 
 echo "Checking if admin user exists..."
-if podman exec -u git $FORGEJO_CONTAINER gitea admin user list 2>/dev/null | grep -q "$FORGEJO_ADMIN_USER"; then
+if podman exec -u git $FORGEJO_CONTAINER gitea admin user list --config /data/gitea/conf/app.ini 2>/dev/null | grep -q "$FORGEJO_ADMIN_USER"; then
   echo "Admin user '$FORGEJO_ADMIN_USER' already exists!"
   if [ -f .forgejo-admin-password ]; then
     echo ""
@@ -24,7 +24,8 @@ if podman exec -u git $FORGEJO_CONTAINER gitea admin user list 2>/dev/null | gre
   if [ "$RESET" = "y" ] || [ "$RESET" = "Y" ]; then
     RANDOM_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-16)
     podman exec -u git $FORGEJO_CONTAINER gitea admin user change-password \
-      --username "$FORGEJO_ADMIN_USER" --password "$RANDOM_PASSWORD"
+      --username "$FORGEJO_ADMIN_USER" --password "$RANDOM_PASSWORD" \
+      --config /data/gitea/conf/app.ini
     echo "$RANDOM_PASSWORD" > .forgejo-admin-password
     chmod 600 .forgejo-admin-password
     echo ""
@@ -44,7 +45,8 @@ podman exec -u git $FORGEJO_CONTAINER gitea admin user create \
   --username "$FORGEJO_ADMIN_USER" \
   --password "$RANDOM_PASSWORD" \
   --email "$FORGEJO_ADMIN_USER@localhost" \
-  --must-change-password=false
+  --must-change-password=false \
+  --config /data/gitea/conf/app.ini
 
 # Save password to file
 echo "$RANDOM_PASSWORD" > .forgejo-admin-password
