@@ -19,6 +19,19 @@ if podman exec -u git $FORGEJO_CONTAINER gitea admin user list 2>/dev/null | gre
     echo "  Username: $FORGEJO_ADMIN_USER"
     echo "  Password: $(cat .forgejo-admin-password)"
   fi
+  echo ""
+  read -p "Reset password? [y/N] " RESET
+  if [ "$RESET" = "y" ] || [ "$RESET" = "Y" ]; then
+    RANDOM_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-16)
+    podman exec -u git $FORGEJO_CONTAINER gitea admin user change-password \
+      --username "$FORGEJO_ADMIN_USER" --password "$RANDOM_PASSWORD"
+    echo "$RANDOM_PASSWORD" > .forgejo-admin-password
+    chmod 600 .forgejo-admin-password
+    echo ""
+    echo "✅ Password reset!"
+    echo "  Username: $FORGEJO_ADMIN_USER"
+    echo "  Password: $RANDOM_PASSWORD"
+  fi
   exit 0
 fi
 
