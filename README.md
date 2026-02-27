@@ -142,6 +142,8 @@ Development laptops can consume the same sstate-cache and downloads used by the 
 
 It is recommended that developer machines use the cache in read-only mode (the default for HTTP/WebSocket clients) so that only CI runners populate the shared cache with validated artifacts. If developers also write to the cache, inconsistent or broken artifacts could affect all users.
 
+For release builds, consider running without any shared cache to ensure fully reproducible, clean builds from source.
+
 ### Client Configuration
 
 Set up authentication and Yocto configuration on machines consuming the cache. Replace `<server-ip>` with your server's IP address.
