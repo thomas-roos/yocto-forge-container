@@ -18,8 +18,9 @@ echo ""
 echo "✅ Services started!"
 echo ""
 
-# Get server IP
-SERVER_IP=$(hostname -I | awk '{print $1}')
+# Get server IPs
+PRIVATE_IP=$(hostname -I | awk '{print $1}')
+PUBLIC_IP=$(curl -s --max-time 2 http://checkip.amazonaws.com || true)
 
 # Check if tunnelmole is running
 if podman ps --filter "name=forgejo-tunnelmole" --format "{{.Names}}" | grep -q tunnelmole; then
@@ -42,8 +43,15 @@ else
   echo "🔒 Forgejo is accessible via SSH tunnel only"
   echo ""
   echo "📡 SSH Tunnel (from your laptop):"
-  echo "   ssh -L 3000:localhost:3000 user@${SERVER_IP}"
+  if [ -n "$PUBLIC_IP" ]; then
+    echo "   Public:  ssh -L 3000:localhost:3000 user@${PUBLIC_IP}"
+  fi
+  echo "   Private: ssh -L 3000:localhost:3000 user@${PRIVATE_IP}"
   echo "   Then access: http://localhost:3000"
+  if [ -n "$PUBLIC_IP" ]; then
+    echo ""
+    echo "   Depending on your network topology, use the private or public IP."
+  fi
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 fi
 
