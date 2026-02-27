@@ -31,13 +31,12 @@ services:
       - FORGEJO__security__INSTALL_LOCK=true
       - FORGEJO__service__DISABLE_REGISTRATION=true
       - FORGEJO__service__REQUIRE_SIGNIN_VIEW=false
+      - TZ=${TZ:-UTC}
     restart: always
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
       - ./forgejo-data:/data
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
     networks:
       - forgejo-net
 
