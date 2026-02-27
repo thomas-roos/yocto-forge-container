@@ -33,6 +33,11 @@ if podman exec -u git $FORGEJO_CONTAINER gitea admin user list --config /data/gi
       --config /data/gitea/conf/app.ini
     echo "$RANDOM_PASSWORD" > .forgejo-admin-password
     chmod 600 .forgejo-admin-password
+    if grep -q "^FORGEJO_ADMIN_PASSWORD=" .env 2>/dev/null; then
+      sed -i "s|^FORGEJO_ADMIN_PASSWORD=.*|FORGEJO_ADMIN_PASSWORD=$RANDOM_PASSWORD|" .env
+    else
+      echo "FORGEJO_ADMIN_PASSWORD=$RANDOM_PASSWORD" >> .env
+    fi
     echo ""
     echo "✅ Password reset!"
     echo "  Username: $FORGEJO_ADMIN_USER"
@@ -57,6 +62,13 @@ podman exec -u git $FORGEJO_CONTAINER gitea admin user create \
 echo "$RANDOM_PASSWORD" > .forgejo-admin-password
 chmod 600 .forgejo-admin-password
 
+# Update .env so runners can auto-register
+if grep -q "^FORGEJO_ADMIN_PASSWORD=" .env 2>/dev/null; then
+  sed -i "s|^FORGEJO_ADMIN_PASSWORD=.*|FORGEJO_ADMIN_PASSWORD=$RANDOM_PASSWORD|" .env
+else
+  echo "FORGEJO_ADMIN_PASSWORD=$RANDOM_PASSWORD" >> .env
+fi
+
 echo ""
 echo "✅ Admin user created successfully!"
 echo ""
@@ -66,8 +78,8 @@ echo "  Password: $RANDOM_PASSWORD"
 echo ""
 echo "⚠️  Password saved to: .forgejo-admin-password"
 echo ""
-echo "Restarting runners to trigger auto-registration..."
-podman-compose restart 2>/dev/null || true
+echo "Restarting runners to pick up registration credentials..."
+podman-compose --profile registry up -d 2>/dev/null || true
 
 echo ""
 echo "Check runner registration status:"

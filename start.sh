@@ -12,6 +12,18 @@ if [ "$1" == "--tunnel" ] || [ "$2" == "--tunnel" ]; then
 fi
 
 echo "Starting services..."
+
+# Ensure required directories exist (cleanup may have removed them)
+source .env
+mkdir -p yocto-cache/sstate-cache yocto-cache/downloads yocto-cache/tmp hashserv-data
+IFS=',' read -ra RUNNER_LIST <<< "$RUNNERS"
+for runner in "${RUNNER_LIST[@]}"; do
+  runner_name=$(echo "$runner" | xargs | sed 's/yocto-runner-//')
+  for i in $(seq 1 ${RUNNER_REPLICAS:-1}); do
+    mkdir -p "runner-data/$runner_name-$i" "yocto-builds/$runner_name-$i"
+  done
+done
+
 podman-compose $PROFILES up -d
 
 echo ""

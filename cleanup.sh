@@ -4,11 +4,11 @@
 set -e
 
 echo "Stopping all services..."
-podman-compose --profile registry --profile tunnel down
+podman-compose --profile registry --profile tunnel --profile hashserv --profile sstate-server down
 
 if [ "$1" == "--clean-data" ]; then
   echo "Removing all data directories..."
-  sudo rm -rf forgejo-data runner-data registry-data yocto-cache
+  sudo rm -rf forgejo-data runner-data registry-data yocto-cache yocto-builds hashserv-data
   echo "✅ All data removed"
 else
   echo "✅ Services stopped (data preserved)"

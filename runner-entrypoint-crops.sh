@@ -24,7 +24,7 @@ echo "Attempting runner registration..."
 if [ -n "$FORGEJO_ADMIN_USER" ] && [ -n "$FORGEJO_ADMIN_PASSWORD" ]; then
   echo "Trying API-based registration..."
   
-  TOKEN=$(curl -sf -X POST "$FORGEJO_URL/api/v1/users/$FORGEJO_ADMIN_USER/actions/runners/registration-token" \
+  TOKEN=$(curl -sf "$FORGEJO_URL/api/v1/admin/runners/registration-token" \
     -u "$FORGEJO_ADMIN_USER:$FORGEJO_ADMIN_PASSWORD" \
     -H "Content-Type: application/json" 2>/dev/null | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
   

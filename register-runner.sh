@@ -17,7 +17,7 @@ fi
 echo "Getting runner registration token from Forgejo..."
 
 # Get token via API
-TOKEN=$(podman exec forgejo curl -sf -X POST "http://localhost:3000/api/v1/admin/runners/registration-token" \
+TOKEN=$(podman exec forgejo curl -sf "http://localhost:3000/api/v1/admin/runners/registration-token" \
   -u "$FORGEJO_ADMIN_USER:$ADMIN_PASSWORD" \
   -H "Content-Type: application/json" 2>/dev/null | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
