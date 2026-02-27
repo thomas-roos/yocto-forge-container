@@ -1,27 +1,147 @@
 # Forgejo for Yocto Development
 
-Minimal Podman-based Forgejo setup for Yocto development with Actions runners, shared caches, and optional public access via Tunnelmole.
+Podman-based Forgejo setup for Yocto development with Actions runners, shared caches, and optional public access via Tunnelmole.
+
+**Repository:** https://github.com/thomas-roos/yocto-forge-container
+**Status:** POC — successfully deployed and tested on EC2. See [Production Readiness](#production-readiness) for what a scaled deployment could look like.
 
 ## Features
 
-- Forgejo Git service (v14.0.1)
-- Forgejo Actions runners with Yocto build environment
-- Shared Yocto caches (sstate-cache, downloads) across builds
-- Optional Hash Equivalence server for faster builds
-- Optional HTTP sstate-cache server with password authentication
-- Local container registry for runner images
+- Forgejo Git service (v14.0.1) with integrated Actions (CI/CD)
+- Multi-OS Actions runners (Ubuntu 22.04/24.04, Debian 12/13, Fedora 42/43, CROPS)
+- Shared Yocto caches (sstate-cache, downloads) across all builds
+- Hash Equivalence server for intelligent build artifact reuse
+- HTTP sstate-cache server with password authentication
+- Local container registry for runner images (htpasswd protected)
 - SSH tunnel access (secure, recommended)
 - Optional Tunnelmole integration for public access
-- Support for multiple OS-based runners (configurable via .env)
+- Configurable runner replicas for parallel builds
 
 ## Quick Reference
 
-**Start all services including hash and sstate servers:**
 ```bash
-podman-compose --profile registry --profile tunnel --profile hashserv --profile sstate-server up -d
+# First-time setup
+cp .env.example .env           # Edit to customize
+./generate-compose.sh          # Generate runner services
+./start.sh                     # Start (or ./start.sh --tunnel for public access)
+./setup-forgejo.sh             # Create admin user
+
+# Start all services including cache servers
+podman-compose --profile registry --profile hashserv --profile sstate-server up -d
+
+# Stop all services
+podman-compose --profile registry --profile tunnel --profile hashserv --profile sstate-server down
+
+# View logs
+podman-compose logs -f
+
+# Check running services
+podman-compose ps
+
+# Clean everything (WARNING: deletes all data)
+./cleanup.sh --clean-data
 ```
 
-**Use shared build cache in your Yocto builds:**
+## Prerequisites
+
+- Podman
+- Podman Compose
+
+## Setup
+
+1. **Configure environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env to customize settings
+   ```
+
+2. **Generate runner services**
+   ```bash
+   ./generate-compose.sh
+   ```
+
+3. **Start services**
+   ```bash
+   # Local/SSH tunnel access (recommended)
+   ./start.sh
+
+   # Or with Tunnelmole for public access
+   ./start.sh --tunnel
+   ```
+
+4. **Run automated setup**
+   ```bash
+   ./setup-forgejo.sh
+   ```
+   This creates the admin user with a random password (saved to `.forgejo-admin-password`).
+
+5. **Access Forgejo via SSH tunnel (from your laptop)**
+   ```bash
+   ssh -L 3000:localhost:3000 user@<server-ip>
+   # Then open: http://localhost:3000
+   ```
+
+6. **Optional: Start cache servers**
+   ```bash
+   podman-compose --profile hashserv --profile sstate-server up -d
+   ```
+
+## Configuration
+
+Edit `.env` to customize:
+
+```bash
+# Registry
+USE_LOCAL_REGISTRY=true
+REGISTRY_URL=localhost:5000
+
+# Runners (comma-separated, must match Dockerfile names without "Dockerfile." prefix)
+RUNNERS=yocto-runner-ubuntu-22.04,yocto-runner-ubuntu-24.04,yocto-runner-debian-12,yocto-runner-debian-13,yocto-runner-fedora-42,yocto-runner-fedora-43,yocto-runner-crops
+
+# Number of runner instances per OS
+RUNNER_REPLICAS=1
+
+# Admin credentials for auto-registration
+FORGEJO_ADMIN_USER=forgejo
+
+# Optional: Manual runner token (if auto-registration fails)
+FORGEJO_RUNNER_TOKEN=
+
+# Forgejo
+FORGEJO_VERSION=14.0.1
+FORGEJO_DOMAIN=localhost
+FORGEJO_ROOT_URL=http://localhost:3000/
+```
+
+## Access Methods
+
+### SSH Tunnel (Recommended)
+
+Forgejo is bound to `127.0.0.1:3000` for security. Access via SSH tunnel:
+
+```bash
+ssh -L 3000:localhost:3000 user@<server-ip>
+# Then open: http://localhost:3000
+```
+
+### Tunnelmole (Optional Public Access)
+
+For temporary public access without SSH:
+
+```bash
+./start.sh --tunnel
+podman-compose logs tunnelmole
+# Look for: https://abc123.tunnelmole.net is forwarding to http://forgejo:3000
+```
+
+Note: Tunnelmole URL changes on each restart (free tier) and has bandwidth limits.
+
+## Using Shared Build Cache
+
+### Client Configuration
+
+Set up authentication and Yocto configuration on machines consuming the cache. Replace `<server-ip>` with your server's IP address.
+
 ```bash
 # Setup authentication (one-time)
 cat > ~/.netrc << EOF
@@ -42,130 +162,74 @@ BB_SIGNATURE_HANDLER = "OEEquivHash"
 BB_HASHSERVE_UPSTREAM = "wss://hashserv.yoctoproject.org/ws"
 ```
 
-Replace `<server-ip>` with your server's IP address.
-
-## Prerequisites
-
-- Podman
-- Podman Compose
-
-## Quick Start
-
-1. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env to customize settings
-   ```
-
-2. **Generate runner services**
-   ```bash
-   ./generate-compose.sh
-   ```
-
-3. **Start services**
-   ```bash
-   # Local/SSH tunnel access (recommended)
-   ./start.sh
-   
-   # Or with Tunnelmole for public access
-   ./start.sh --tunnel
-   ```
-   
-   The script will display access URLs and SSH tunnel command.
-
-4. **Access Forgejo via SSH tunnel (from your laptop)**
-   ```bash
-   # Create SSH tunnel
-   ssh -L 3000:localhost:3000 user@<server-ip>
-   
-   # Then open in browser: http://localhost:3000
-   ```
-   
-   Replace `user@<server-ip>` with your server credentials.
-
-5. **Optional: Start Hash Equivalence and Sstate servers**
-   ```bash
-   podman-compose --profile hashserv --profile sstate-server up -d
-   ```
-
-6. **Run automated setup**
-   ```bash
-   ./setup-forgejo.sh
-   ```
-   
-   This creates the admin user account with a random password.
-
-7. **Login to Forgejo**
-   - Access via SSH tunnel: http://localhost:3000
-   - Login with credentials shown by setup script (also saved in `.forgejo-admin-password`)
-
-## Access Methods
-
-### SSH Tunnel (Recommended)
-
-Forgejo is bound to localhost only for security. Access it via SSH tunnel:
+### Complete Workflow Example
 
 ```bash
-# From your laptop, create SSH tunnel
-ssh -L 3000:localhost:3000 user@<server-ip>
+# Setup authentication
+cat > ~/.netrc << EOF
+machine <server-ip>
+login yocto
+password changeme123
+EOF
+chmod 600 ~/.netrc
 
-# Keep the SSH session open, then access in browser
-http://localhost:3000
+# Configure Yocto
+export SSTATE_MIRRORS="file://.* http://<server-ip>:8080/sstate-cache/PATH"
+export PREMIRRORS="git://.*/.* http://<server-ip>:8080/downloads/ \n ftp://.*/.* http://<server-ip>:8080/downloads/ \n http://.*/.* http://<server-ip>:8080/downloads/ \n https://.*/.* http://<server-ip>:8080/downloads/ \n"
+export BB_HASHSERVE="wss://<server-ip>:8686/ws"
+export BB_SIGNATURE_HANDLER="OEEquivHash"
+export BB_HASHSERVE_UPSTREAM="wss://hashserv.yoctoproject.org/ws"
+export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS SSTATE_MIRRORS PREMIRRORS BB_HASHSERVE BB_SIGNATURE_HANDLER BB_HASHSERVE_UPSTREAM"
 ```
 
-**Benefits:**
-- Secure: Not exposed to public internet
-- No additional tools required
-- Works with existing SSH access
+### Hash Equivalence Server
 
-### Tunnelmole (Optional Public Access)
-
-For temporary public access without SSH:
+Speeds up builds by reusing build outputs with equivalent inputs. Runs in read-only mode.
 
 ```bash
-# Start with Tunnelmole
-./start.sh --tunnel
+# Start
+podman-compose --profile hashserv up -d
 
-# Get public URL from logs
-podman-compose logs tunnelmole
+# Configure in local.conf
+BB_HASHSERVE = "wss://<server-ip>:8686/ws"
+BB_SIGNATURE_HANDLER = "OEEquivHash"
+
+# Optional: upstream server for additional cache hits
+BB_HASHSERVE_UPSTREAM = "wss://hashserv.yoctoproject.org/ws"
 ```
 
-Look for output like: `https://abc123.tunnelmole.net is forwarding to http://forgejo:3000`
+### HTTP Sstate-Cache Server
 
-## Configuration
-
-Edit `.env` to customize:
+Serves sstate-cache and downloads over HTTP with basic auth (nginx).
 
 ```bash
-# Use local registry or external
-USE_LOCAL_REGISTRY=true
-REGISTRY_URL=localhost:5000
+# Start
+podman-compose --profile sstate-server up -d
 
-# Comma-separated list of runners to enable
-# Must match Dockerfile names (without "Dockerfile." prefix)
-RUNNERS=yocto-runner-ubuntu
-
-# Admin credentials for auto-registration
-FORGEJO_ADMIN_USER=admin
-FORGEJO_ADMIN_PASSWORD=changeme123
-
-# Optional: Manual runner token (if auto-registration fails)
-FORGEJO_RUNNER_TOKEN=
+# Generate custom password file (optional, defaults: yocto/changeme123)
+podman run --rm httpd:alpine htpasswd -nbB yocto <your-password> > sstate-htpasswd
 ```
+
+### Server Ports
+
+| Service | Port | Protocol | Auth | Mode |
+|---------|------|----------|------|------|
+| Hash Equivalence | 8686 | WebSocket | None | Read-only |
+| Sstate Cache | 8080 | HTTP (`/sstate-cache/`) | htpasswd | Read-only |
+| Downloads Cache | 8080 | HTTP (`/downloads/`) | htpasswd | Read-only |
 
 ## Building and Pushing Runner Images
 
-The registry is password protected and accessible on the network:
+The registry is password protected:
 
 ```bash
-# Login to registry
-podman login 172.31.34.190:5000
-# Username: yocto
-# Password: changeme123
+# Login to registry (use REGISTRY_URL from .env)
+podman login <registry-url>
+# Username: yocto / Password: changeme123
 
-# Build and push runner image
-podman build -f Dockerfile.yocto-runner-ubuntu-22.04 -t 172.31.34.190:5000/yocto-runner-ubuntu-22.04:latest .
-podman push 172.31.34.190:5000/yocto-runner-ubuntu-22.04:latest
+# Build and push
+podman build -f Dockerfile.yocto-runner-ubuntu-22.04 -t <registry-url>/yocto-runner-ubuntu-22.04:latest .
+podman push <registry-url>/yocto-runner-ubuntu-22.04:latest
 ```
 
 **To change registry password:**
@@ -176,147 +240,71 @@ podman-compose --profile registry restart
 
 ## Adding Custom Runners
 
-1. Create a new Dockerfile (e.g., `Dockerfile.yocto-runner-fedora`)
-2. Add it to the RUNNERS list in `.env`:
+1. Create a Dockerfile (e.g., `Dockerfile.yocto-runner-rocky-9`)
+2. Add to `RUNNERS` in `.env`:
    ```bash
-   RUNNERS=yocto-runner-ubuntu,yocto-runner-fedora
+   RUNNERS=yocto-runner-ubuntu-22.04,yocto-runner-rocky-9
    ```
-3. Regenerate compose configuration:
+3. Regenerate and restart:
    ```bash
    ./generate-compose.sh
-   ```
-4. Restart services:
-   ```bash
    podman-compose up -d
    ```
+
+## Runner Registration
+
+Runners auto-register using a 3-step fallback:
+1. **API-based** — uses `FORGEJO_ADMIN_USER`/`FORGEJO_ADMIN_PASSWORD` to generate a token
+2. **Manual token** — uses `FORGEJO_RUNNER_TOKEN` if API fails
+3. **Error** — logs instructions for manual token retrieval
+
+To get a manual token:
+1. Access Forgejo → Site Administration → Actions → Runners
+2. Click "Create new Runner" and copy the token
+3. Set `FORGEJO_RUNNER_TOKEN` in `.env`
+4. Restart runners: `podman-compose restart $(podman-compose ps --services | grep runner)`
 
 ## Directory Structure
 
 ```
 .
-├── forgejo-data/           # Forgejo data and repositories
+├── docker-compose.yml          # Core services (forgejo, registry, tunnelmole, hashserv, sstate-server)
+├── docker-compose.override.yml # Generated runner services (from generate-compose.sh)
+├── .env.example                # Configuration template
+├── .env                        # Your configuration (gitignored)
+├── Dockerfile.yocto-runner-*   # Runner images (ubuntu, debian, fedora, crops)
+├── generate-compose.sh         # Generates runner services from RUNNERS env var
+├── start.sh                    # Start services with access info
+├── setup-forgejo.sh            # Create admin user
+├── register-runner.sh          # Manual runner registration helper
+├── runner-entrypoint.sh        # Runner container entrypoint
+├── runner-entrypoint-crops.sh  # CROPS runner entrypoint
+├── cleanup.sh                  # Stop services, optionally remove data
+├── nginx-sstate.conf           # Nginx config for sstate/downloads server
+├── registry-htpasswd           # Registry auth file
+├── sstate-htpasswd             # Sstate server auth file
+├── forgejo-data/               # Forgejo data and repositories (gitignored)
 ├── yocto-cache/
-│   ├── sstate-cache/       # Shared Yocto state cache
-│   └── downloads/          # Shared Yocto downloads
-├── hashserv-data/          # Hash equivalence server database
-├── runner-data/
-│   ├── ubuntu/             # Runner registration data
-│   └── ...
-└── registry-data/          # Local container registry storage
+│   ├── sstate-cache/           # Shared Yocto state cache
+│   ├── downloads/              # Shared Yocto downloads
+│   └── tmp/                    # Shared tmp
+├── hashserv-data/              # Hash equivalence server database
+├── runner-data/                # Runner registration data (gitignored)
+├── yocto-builds/               # Runner build workdirs (gitignored)
+└── registry-data/              # Container registry storage (gitignored)
 ```
-
-## Runner Registration
-
-Runners attempt automatic registration using:
-1. **API-based**: Uses FORGEJO_ADMIN_USER/PASSWORD to generate token
-2. **Manual token**: Uses FORGEJO_RUNNER_TOKEN if API fails
-3. **Interactive**: Prompts for token if both methods fail
-
-To get a manual token:
-1. Access Forgejo web UI via SSH tunnel
-2. Go to Site Administration → Actions → Runners
-3. Click "Create new Runner" and copy the token
-4. Set `FORGEJO_RUNNER_TOKEN` in `.env`
-5. Restart runner: `podman-compose restart runner-ubuntu`
-
-## Using Hash Equivalence Server
-
-The hash equivalence server speeds up builds by reusing build outputs with equivalent inputs. To enable:
-
-1. **Start the server:**
-   ```bash
-   podman-compose --profile hashserv up -d
-   ```
-
-2. **Configure your Yocto build** (in `local.conf` or workflow):
-   ```bash
-   BB_HASHSERVE = "wss://<server-ip>:8686/ws"
-   BB_SIGNATURE_HANDLER = "OEEquivHash"
-   ```
-   
-   Replace `<server-ip>` with your server's IP address or hostname (e.g., `172.31.34.190`).
-
-3. **Optional: Use upstream server** for additional cache hits:
-   ```bash
-   BB_HASHSERVE_UPSTREAM = "wss://hashserv.yoctoproject.org/ws"
-   ```
-
-The server runs in read-only mode to prevent clients from storing local equivalences. This ensures only equivalences for the shared sstate-cache are served.
-
-## Using HTTP Sstate-Cache Server
-
-Share your sstate-cache over HTTP with password authentication:
-
-1. **Generate password file** (first time only):
-   ```bash
-   podman run --rm httpd:alpine htpasswd -nbB yocto <your-password> > sstate-htpasswd
-   ```
-   
-   Default credentials are already generated: `yocto` / `changeme123`
-
-2. **Start the server:**
-   ```bash
-   podman-compose --profile sstate-server up -d
-   ```
-
-3. **Configure authentication** on the client machine (where you run Yocto builds):
-   ```bash
-   # Create ~/.netrc for HTTP authentication
-   cat > ~/.netrc << EOF
-   machine <server-ip>
-   login yocto
-   password changeme123
-   EOF
-   chmod 600 ~/.netrc
-   ```
-   
-   Replace `<server-ip>` with your server's IP address (e.g., `172.31.34.190`).
-
-4. **Configure your Yocto build** (in `local.conf` or workflow):
-   ```bash
-   SSTATE_MIRRORS = "file://.* http://<server-ip>:8080/sstate-cache/PATH"
-   PREMIRRORS:prepend = "git://.*/.* http://<server-ip>:8080/downloads/ \n"
-   PREMIRRORS:prepend = "ftp://.*/.* http://<server-ip>:8080/downloads/ \n"
-   PREMIRRORS:prepend = "http://.*/.* http://<server-ip>:8080/downloads/ \n"
-   PREMIRRORS:prepend = "https://.*/.* http://<server-ip>:8080/downloads/ \n"
-   ```
-
-5. **Complete example** for workflow (combines both hash server and sstate server):
-   ```bash
-   # Setup authentication
-   cat > ~/.netrc << EOF
-   machine 172.31.34.190
-   login yocto
-   password changeme123
-   EOF
-   chmod 600 ~/.netrc
-   
-   # Configure Yocto
-   export SSTATE_MIRRORS="file://.* http://172.31.34.190:8080/sstate-cache/PATH"
-   export PREMIRRORS="git://.*/.* http://172.31.34.190:8080/downloads/ \n ftp://.*/.* http://172.31.34.190:8080/downloads/ \n http://.*/.* http://172.31.34.190:8080/downloads/ \n https://.*/.* http://172.31.34.190:8080/downloads/ \n"
-   export BB_HASHSERVE="wss://172.31.34.190:8686/ws"
-   export BB_SIGNATURE_HANDLER="OEEquivHash"
-   export BB_HASHSERVE_UPSTREAM="wss://hashserv.yoctoproject.org/ws"
-   export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS SSTATE_MIRRORS PREMIRRORS BB_HASHSERVE BB_SIGNATURE_HANDLER BB_HASHSERVE_UPSTREAM"
-   ```
-
-**Server Details:**
-- Hash Equivalence: WebSocket on port 8686 (read-only mode)
-- Sstate Cache: HTTP on port 8080 at `/sstate-cache/` (password protected, read-only)
-- Downloads Cache: HTTP on port 8080 at `/downloads/` (password protected, read-only)
-- All servers provide read-only access to shared build artifacts
 
 ## Troubleshooting
 
 **Runner not registering:**
-- Check runner logs: `podman-compose logs runner-ubuntu`
+- Check logs: `podman-compose logs <runner-service-name>`
 - Verify admin credentials match Forgejo setup
-- Try manual token registration
+- Try manual token registration via `./register-runner.sh`
 
 **Registry connection issues:**
 - Ensure registry is running: `podman-compose ps registry`
-- Check registry URL in .env matches your setup
-- For external registry, ensure it's accessible from Podman network
+- Check `REGISTRY_URL` in `.env` matches your setup
+- For external registry, ensure it's accessible from the Podman network
 
 **Yocto build failures:**
 - Verify shared cache directories exist and are writable
@@ -324,16 +312,360 @@ Share your sstate-cache over HTTP with password authentication:
 - Review runner logs for specific errors
 
 **Tunnelmole not working:**
-- Check tunnelmole logs: `podman-compose logs tunnelmole`
+- Check logs: `podman-compose logs tunnelmole`
 - Ensure forgejo service is running
 - Free tier has bandwidth limits
 
-## Stopping Services
+## Architecture
 
-```bash
-# Stop all services
-podman-compose --profile registry --profile tunnel down
+### Current POC Architecture
 
-# Stop and remove volumes (WARNING: deletes all data)
-podman-compose --profile registry --profile tunnel down -v
+```mermaid
+graph TB
+    subgraph "Access Layer"
+        SSH[SSH Tunnel<br/>localhost:3000]
+        TM[Tunnelmole<br/>Optional Public Access]
+    end
+
+    subgraph "Single Host - Podman"
+        subgraph "Forgejo Service"
+            FG[Forgejo<br/>Git + Actions<br/>Port 3000]
+            FGDB[(SQLite DB<br/>Local Volume)]
+        end
+
+        subgraph "Container Registry"
+            REG[Registry<br/>Port 5000<br/>htpasswd auth]
+        end
+
+        subgraph "Actions Runners"
+            R1[Ubuntu Runner<br/>Replica 1-N]
+            R2[Debian Runner<br/>Replica 1-N]
+            R3[Fedora Runner<br/>Replica 1-N]
+            R4[CROPS Runner<br/>Replica 1-N]
+        end
+
+        subgraph "Cache Services"
+            HS[Hash Equiv Server<br/>WebSocket 8686<br/>Read-only]
+            SS[Sstate HTTP Server<br/>Port 8080<br/>nginx + auth]
+        end
+
+        subgraph "Shared Storage - Local Volumes"
+            SC[(sstate-cache)]
+            DL[(downloads)]
+            TMP[(tmp)]
+        end
+    end
+
+    SSH --> FG
+    TM --> FG
+    FG --> FGDB
+    FG -.Job Queue.-> R1
+    FG -.Job Queue.-> R2
+    FG -.Job Queue.-> R3
+    FG -.Job Queue.-> R4
+
+    R1 --> SC
+    R1 --> DL
+    R1 --> TMP
+    R2 --> SC
+    R2 --> DL
+    R3 --> SC
+    R3 --> DL
+    R4 --> SC
+    R4 --> DL
+
+    R1 -.Pull Images.-> REG
+    R2 -.Pull Images.-> REG
+    R3 -.Pull Images.-> REG
+    R4 -.Pull Images.-> REG
+
+    HS -.Read.-> SC
+    SS -.Serve.-> SC
+    SS -.Serve.-> DL
+
+    style SSH fill:#e1f5ff
+    style TM fill:#fff4e1
+    style FG fill:#e8f5e9
+    style REG fill:#f3e5f5
+    style HS fill:#fff9c4
+    style SS fill:#fff9c4
+    style SC fill:#ffebee
+    style DL fill:#ffebee
+    style TMP fill:#ffebee
 ```
+
+### Build Data Flow
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant FG as Forgejo
+    participant Runner as Actions Runner
+    participant Cache as Shared Cache
+    participant Hash as Hash Server
+
+    Dev->>FG: Push code / Trigger workflow
+    FG->>Runner: Assign build job
+    Runner->>Hash: Query hash equivalence
+    Hash-->>Runner: Return equivalent hashes
+    Runner->>Cache: Check sstate-cache
+    alt Cache Hit
+        Cache-->>Runner: Return cached artifacts
+        Runner->>Runner: Skip build step
+    else Cache Miss
+        Runner->>Runner: Execute build
+        Runner->>Cache: Store new artifacts
+        Runner->>Hash: Report new hash
+    end
+    Runner->>FG: Report build result
+    FG->>Dev: Notify completion
+```
+
+### Component Interaction
+
+```mermaid
+graph LR
+    subgraph "Build Process"
+        A[Workflow Trigger] --> B[Runner Assignment]
+        B --> C{Hash Check}
+        C -->|Hit| D[Reuse Artifact]
+        C -->|Miss| E[Build from Source]
+        E --> F[Store in Cache]
+        D --> G[Complete Job]
+        F --> G
+    end
+
+    subgraph "Cache Layer"
+        H[sstate-cache]
+        I[downloads]
+        J[Hash DB]
+    end
+
+    C -.Query.-> J
+    D -.Read.-> H
+    E -.Read.-> I
+    F -.Write.-> H
+    F -.Write.-> J
+
+    style C fill:#fff9c4
+    style H fill:#ffebee
+    style I fill:#ffebee
+    style J fill:#e1f5ff
+```
+
+## Production Readiness
+
+### Target Production Architecture
+
+```mermaid
+graph TB
+    subgraph "Access Layer"
+        SSO[SSO/SAML]
+        DNS[Route53<br/>Custom Domain]
+    end
+
+    subgraph "AWS Region"
+        subgraph "VPC"
+            subgraph "Public Subnets"
+                ALB[Application<br/>Load Balancer<br/>SSL/TLS]
+            end
+
+            subgraph "Private Subnets - AZ1"
+                FG1[Forgejo<br/>ECS Fargate<br/>Task 1]
+                R1A[Runner Pool A<br/>ECS Tasks<br/>Auto-scaling]
+            end
+
+            subgraph "Private Subnets - AZ2"
+                FG2[Forgejo<br/>ECS Fargate<br/>Task 2]
+                R2A[Runner Pool B<br/>ECS Tasks<br/>Auto-scaling]
+            end
+
+            subgraph "Cache Services"
+                HS[Hash Server<br/>ECS Fargate]
+                SS[Sstate Server<br/>ECS Fargate<br/>nginx]
+            end
+        end
+
+        subgraph "Managed Services"
+            RDS[(RDS PostgreSQL<br/>Multi-AZ)]
+            EFS[(EFS<br/>sstate-cache<br/>downloads)]
+            ECR[ECR<br/>Runner Images<br/>Vulnerability Scan]
+            SM[Secrets Manager<br/>Credentials<br/>Tokens]
+        end
+
+        subgraph "Storage & Backup"
+            S3[(S3<br/>Backups<br/>Archives<br/>Lifecycle)]
+        end
+
+        subgraph "Monitoring"
+            CW[CloudWatch<br/>Logs + Metrics<br/>Alarms]
+        end
+    end
+
+    SSO --> DNS
+    DNS --> ALB
+    ALB --> FG1
+    ALB --> FG2
+
+    FG1 --> RDS
+    FG2 --> RDS
+    FG1 -.Jobs.-> R1A
+    FG2 -.Jobs.-> R2A
+
+    R1A --> EFS
+    R2A --> EFS
+    R1A -.Pull.-> ECR
+    R2A -.Pull.-> ECR
+
+    HS --> EFS
+    SS --> EFS
+
+    FG1 -.Secrets.-> SM
+    FG2 -.Secrets.-> SM
+
+    RDS -.Backup.-> S3
+    EFS -.Backup.-> S3
+
+    FG1 -.Logs.-> CW
+    R1A -.Logs.-> CW
+    R2A -.Logs.-> CW
+
+    style SSO fill:#e8f5e9
+    style ALB fill:#e1f5ff
+    style RDS fill:#f3e5f5
+    style EFS fill:#ffebee
+    style ECR fill:#fff4e1
+    style SM fill:#fce4ec
+    style S3 fill:#e0f2f1
+    style CW fill:#fff9c4
+```
+
+### Production Network Architecture
+
+```mermaid
+graph TB
+    subgraph "Internet"
+        USER[Users]
+    end
+
+    subgraph "VPC - 10.0.0.0/16"
+        subgraph "Public Subnets"
+            PS1[Public Subnet AZ1<br/>10.0.1.0/24]
+            PS2[Public Subnet AZ2<br/>10.0.2.0/24]
+            NAT1[NAT Gateway]
+            NAT2[NAT Gateway]
+            ALB[Application LB]
+        end
+
+        subgraph "Private Subnets - Application"
+            PRA1[Private App AZ1<br/>10.0.10.0/24]
+            PRA2[Private App AZ2<br/>10.0.11.0/24]
+            FG[Forgejo Tasks]
+            CACHE[Cache Services]
+        end
+
+        subgraph "Private Subnets - Runners"
+            PRR1[Private Runner AZ1<br/>10.0.20.0/24]
+            PRR2[Private Runner AZ2<br/>10.0.21.0/24]
+            RUNNERS[Runner Tasks<br/>Auto-scaling]
+        end
+
+        subgraph "Private Subnets - Data"
+            PRD1[Private Data AZ1<br/>10.0.30.0/24]
+            PRD2[Private Data AZ2<br/>10.0.31.0/24]
+            RDS[(RDS)]
+            EFS[(EFS)]
+        end
+
+        subgraph "VPC Endpoints"
+            VPE1[S3 Endpoint]
+            VPE2[ECR Endpoint]
+            VPE3[Secrets Manager]
+            VPE4[CloudWatch]
+        end
+    end
+
+    USER --> ALB
+    ALB --> FG
+    FG --> RDS
+    FG --> EFS
+    FG --> RUNNERS
+    RUNNERS --> EFS
+    CACHE --> EFS
+
+    RUNNERS --> NAT1
+    RUNNERS --> NAT2
+    FG --> VPE1
+    FG --> VPE2
+    FG --> VPE3
+    FG --> VPE4
+    RUNNERS --> VPE1
+    RUNNERS --> VPE2
+    RUNNERS --> VPE3
+
+    style USER fill:#e8f5e9
+    style ALB fill:#e1f5ff
+    style FG fill:#fff4e1
+    style RUNNERS fill:#f3e5f5
+    style RDS fill:#ffebee
+    style EFS fill:#ffebee
+```
+
+### Auto-scaling Architecture
+
+```mermaid
+graph LR
+    subgraph "Monitoring"
+        CW[CloudWatch Metrics]
+        M1[Queue Depth]
+        M2[CPU Utilization]
+        M3[Memory Usage]
+    end
+
+    subgraph "Auto-scaling Logic"
+        ASG[ECS Auto-scaling]
+        SP1[Scale-out Policy<br/>Queue > 5 jobs]
+        SP2[Scale-in Policy<br/>Queue = 0 for 10min]
+    end
+
+    subgraph "Runner Pool"
+        R1[Runner 1]
+        R2[Runner 2]
+        R3[Runner 3]
+        RN[Runner N<br/>Max: 20]
+    end
+
+    M1 --> CW
+    M2 --> CW
+    M3 --> CW
+    CW --> ASG
+    ASG --> SP1
+    ASG --> SP2
+    SP1 -.Add Tasks.-> R1
+    SP1 -.Add Tasks.-> R2
+    SP2 -.Remove Tasks.-> R3
+
+    style CW fill:#fff9c4
+    style ASG fill:#e1f5ff
+    style SP1 fill:#c8e6c9
+    style SP2 fill:#ffcdd2
+```
+
+## Glossary
+
+| Term | Definition |
+|------|-----------|
+| CROPS | Collaborative Runtime for Optimized Portable Systems — Docker-based Yocto build environment |
+| Forgejo | Self-hosted Git service with Actions (CI/CD), fork of Gitea |
+| Hash Equivalence | Yocto feature to reuse build outputs with equivalent inputs |
+| sstate-cache | Yocto shared state cache for build artifacts |
+
+## References
+
+- [Forgejo Documentation](https://forgejo.org/docs/latest/)
+- [Yocto Project](https://www.yoctoproject.org/)
+- [AWS ECS Best Practices](https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/)
+
+## License
+
+See [LICENSE](LICENSE) file.
