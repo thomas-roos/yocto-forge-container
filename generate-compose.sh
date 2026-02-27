@@ -8,6 +8,10 @@ fi
 
 source .env
 
+# Auto-detect USER_ID and GROUP_ID if not set
+USER_ID=${USER_ID:-$(id -u)}
+GROUP_ID=${GROUP_ID:-$(id -g)}
+
 RUNNER_REPLICAS=${RUNNER_REPLICAS:-1}
 
 if [ "$USE_LOCAL_REGISTRY" = "true" ]; then
@@ -49,7 +53,7 @@ for runner in "${RUNNER_LIST[@]}"; do
     image: ${REGISTRY_URL}/${runner}:latest
     container_name: forgejo-runner-$runner_name-$i
     restart: always
-    user: "1000:1000"
+    user: "$USER_ID:$GROUP_ID"
     privileged: true
     environment:
       - FORGEJO_URL=http://forgejo:3000
@@ -58,8 +62,8 @@ for runner in "${RUNNER_LIST[@]}"; do
       - FORGEJO_RUNNER_TOKEN=\${FORGEJO_RUNNER_TOKEN}
       - RUNNER_NAME=runner-$runner_name-$i
       - RUNNER_LABELS=$runner_name:host
-      - USER_ID=1000
-      - GROUP_ID=1000
+      - USER_ID=$USER_ID
+      - GROUP_ID=$GROUP_ID
     volumes:
       - ./runner-data/$runner_name-$i:/data:U
       - ./yocto-cache/sstate-cache:/nfs/sstate-cache

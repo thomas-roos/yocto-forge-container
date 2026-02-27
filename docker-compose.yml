@@ -21,8 +21,8 @@ services:
     image: codeberg.org/forgejo/forgejo:${FORGEJO_VERSION:-14.0.1}
     container_name: forgejo
     environment:
-      - USER_UID=1000
-      - USER_GID=1000
+      - USER_UID=${USER_ID:-1000}
+      - USER_GID=${GROUP_ID:-1000}
       - FORGEJO____APP_NAME=Forgejo
       - FORGEJO__database__DB_TYPE=sqlite3
       - FORGEJO__database__PATH=/data/gitea/gitea.db

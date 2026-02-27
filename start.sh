@@ -15,14 +15,26 @@ echo "Starting services..."
 
 # Ensure required directories exist (cleanup may have removed them)
 source .env
-mkdir -p yocto-cache/sstate-cache yocto-cache/downloads yocto-cache/tmp hashserv-data
+
+# Auto-detect USER_ID and GROUP_ID if not set
+USER_ID=${USER_ID:-$(id -u)}
+GROUP_ID=${GROUP_ID:-$(id -g)}
+
+# Create directories with correct ownership
+mkdir -p forgejo-data yocto-cache/sstate-cache yocto-cache/downloads yocto-cache/tmp hashserv-data registry-data
+chown -R $USER_ID:$GROUP_ID forgejo-data yocto-cache hashserv-data registry-data 2>/dev/null || true
+
 IFS=',' read -ra RUNNER_LIST <<< "$RUNNERS"
 for runner in "${RUNNER_LIST[@]}"; do
   runner_name=$(echo "$runner" | xargs | sed 's/yocto-runner-//')
   for i in $(seq 1 ${RUNNER_REPLICAS:-1}); do
     mkdir -p "runner-data/$runner_name-$i" "yocto-builds/$runner_name-$i"
+    chown -R $USER_ID:$GROUP_ID "runner-data/$runner_name-$i" "yocto-builds/$runner_name-$i" 2>/dev/null || true
   done
 done
+
+# Export for docker-compose
+export USER_ID GROUP_ID
 
 podman-compose $PROFILES up -d
 
