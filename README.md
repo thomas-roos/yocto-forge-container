@@ -394,6 +394,7 @@ graph TB
 
     DEV -.HTTP read-only.-> SS
     DEV -.WebSocket read-only.-> HS
+    DEV -.Pull Images.-> REG
 
     style SSH fill:#e1f5ff
     style TM fill:#fff4e1
