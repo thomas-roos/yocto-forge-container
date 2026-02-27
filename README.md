@@ -16,15 +16,44 @@ Podman-based Forgejo setup for Yocto development with Actions runners, shared ca
 - Optional Tunnelmole integration for public access
 - Configurable runner replicas for parallel builds
 
-## Quick Reference
+## Prerequisites
+
+- Podman
+- Podman Compose
+
+## Quick Start
 
 ```bash
-# First-time setup
 cp .env.example .env           # Edit to customize
 ./generate-compose.sh          # Generate runner services
 ./start.sh                     # Start (or ./start.sh --tunnel for public access)
 ./setup-forgejo.sh             # Create admin user
+```
 
+### What each step does
+
+1. `cp .env.example .env` — creates your configuration. Edit `.env` to choose which runners to enable, set the registry URL, etc.
+
+2. `./generate-compose.sh` — reads `RUNNERS` from `.env` and generates `docker-compose.override.yml` with the runner services.
+
+3. `./start.sh` — runs `podman-compose --profile registry up -d` to start Forgejo, the registry, and all runners. Use `./start.sh --tunnel` to also enable Tunnelmole for public access. Prints SSH tunnel instructions.
+
+4. `./setup-forgejo.sh` — waits for Forgejo to be ready, creates the admin user with a random password (saved to `.forgejo-admin-password`). Safe to re-run; will offer to reset the password if the user already exists.
+
+5. **Access Forgejo via SSH tunnel (from your laptop):**
+   ```bash
+   ssh -L 3000:localhost:3000 user@<server-ip>
+   # Then open: http://localhost:3000
+   ```
+
+6. **Optional: Start cache servers**
+   ```bash
+   podman-compose --profile hashserv --profile sstate-server up -d
+   ```
+
+### Daily operations
+
+```bash
 # Start all services including cache servers
 podman-compose --profile registry --profile hashserv --profile sstate-server up -d
 
@@ -40,50 +69,6 @@ podman-compose ps
 # Clean everything (WARNING: deletes all data)
 ./cleanup.sh --clean-data
 ```
-
-## Prerequisites
-
-- Podman
-- Podman Compose
-
-## Setup
-
-1. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env to customize settings
-   ```
-
-2. **Generate runner services**
-   ```bash
-   ./generate-compose.sh
-   ```
-
-3. **Start services**
-   ```bash
-   # Local/SSH tunnel access (recommended)
-   ./start.sh
-
-   # Or with Tunnelmole for public access
-   ./start.sh --tunnel
-   ```
-
-4. **Run automated setup**
-   ```bash
-   ./setup-forgejo.sh
-   ```
-   This creates the admin user with a random password (saved to `.forgejo-admin-password`).
-
-5. **Access Forgejo via SSH tunnel (from your laptop)**
-   ```bash
-   ssh -L 3000:localhost:3000 user@<server-ip>
-   # Then open: http://localhost:3000
-   ```
-
-6. **Optional: Start cache servers**
-   ```bash
-   podman-compose --profile hashserv --profile sstate-server up -d
-   ```
 
 ## Configuration
 
