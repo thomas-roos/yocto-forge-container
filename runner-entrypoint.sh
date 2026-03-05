@@ -5,7 +5,15 @@ FORGEJO_URL="${FORGEJO_URL:-http://forgejo:3000}"
 RUNNER_NAME="${RUNNER_NAME:-runner}"
 RUNNER_LABELS="${RUNNER_LABELS:-ubuntu:host}"
 
-# Ensure /data is writable
+# Handle CROPS-specific setup
+if [[ "$RUNNER_NAME" == *"crops"* ]]; then
+  echo "CROPS runner detected, setting up user mapping..."
+  if [ -n "$USER_ID" ] && [ -n "$GROUP_ID" ]; then
+    groupadd -g $GROUP_ID yoctouser 2>/dev/null || true
+    useradd -u $USER_ID -g $GROUP_ID -m yoctouser 2>/dev/null || true
+  fi
+fi
+
 mkdir -p /data
 cd /data
 
@@ -22,6 +30,7 @@ fi
 
 echo "Attempting runner registration..."
 
+# Try API-based registration
 if [ -n "$FORGEJO_ADMIN_USER" ] && [ -n "$FORGEJO_ADMIN_PASSWORD" ]; then
   echo "Trying API-based registration..."
   
@@ -41,6 +50,7 @@ if [ -n "$FORGEJO_ADMIN_USER" ] && [ -n "$FORGEJO_ADMIN_PASSWORD" ]; then
   echo "API registration failed, trying manual token..."
 fi
 
+# Try manual token
 if [ -n "$FORGEJO_RUNNER_TOKEN" ]; then
   echo "Using manual token from environment..."
   forgejo-runner register --no-interactive \
@@ -51,14 +61,15 @@ if [ -n "$FORGEJO_RUNNER_TOKEN" ]; then
   exec forgejo-runner daemon
 fi
 
-echo "ERROR: No registration method available!"
-echo "Please set either:"
-echo "  - FORGEJO_ADMIN_USER and FORGEJO_ADMIN_PASSWORD for API registration"
-echo "  - FORGEJO_RUNNER_TOKEN for manual registration"
+# Registration failed
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "❌ Runner registration failed!"
 echo ""
-echo "To get a manual token:"
-echo "  1. Access Forgejo web UI"
-echo "  2. Go to Site Administration → Actions → Runners"
+echo "Manual registration steps:"
+echo "  1. Access Forgejo: http://localhost:3000"
+echo "  2. Go to: Site Administration → Actions → Runners"
 echo "  3. Click 'Create new Runner' and copy the token"
-echo "  4. Set FORGEJO_RUNNER_TOKEN in .env and restart"
+echo "  4. Add to .env: FORGEJO_RUNNER_TOKEN=<your-token>"
+echo "  5. Restart: ./manage.sh restart"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 exit 1

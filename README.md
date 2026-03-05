@@ -25,49 +25,44 @@ Podman-based Forgejo setup for Yocto development with Actions runners, shared ca
 
 ```bash
 cp .env.example .env           # Edit to customize
-./generate-compose.sh          # Generate runner services
-./start.sh                     # Start (or ./start.sh --tunnel for public access)
-./setup-forgejo.sh             # Create admin user
+./setup.sh                     # Generate config, start services, create admin user
 ```
 
-### What each step does
+### What it does
 
-1. `cp .env.example .env` — creates your configuration. Edit `.env` to choose which runners to enable, set the registry URL, etc.
+1. Generates `docker-compose.override.yml` from `RUNNERS` in `.env`
+2. Creates data directories with correct permissions
+3. Starts Forgejo, registry, and all configured runners
+4. Creates admin user with random password (saved to `.forgejo-admin-password`)
+5. Runners auto-register using admin credentials
 
-2. `./generate-compose.sh` — reads `RUNNERS` from `.env` and generates `docker-compose.override.yml` with the runner services.
+### Access Forgejo
 
-3. `./start.sh` — runs `podman-compose --profile registry up -d` to start Forgejo, the registry, and all runners. Use `./start.sh --tunnel` to also enable Tunnelmole for public access. Prints SSH tunnel instructions.
+**Via SSH tunnel (from your laptop):**
+```bash
+ssh -L 3000:localhost:3000 user@<server-ip>
+# Then open: http://localhost:3000
+```
 
-4. `./setup-forgejo.sh` — waits for Forgejo to be ready, creates the admin user with a random password (saved to `.forgejo-admin-password`). Safe to re-run; will offer to reset the password if the user already exists.
-
-5. **Access Forgejo via SSH tunnel (from your laptop):**
-   ```bash
-   ssh -L 3000:localhost:3000 user@<server-ip>
-   # Then open: http://localhost:3000
-   ```
-
-6. **Optional: Start cache servers**
-   ```bash
-   podman-compose --profile hashserv --profile sstate-server up -d
-   ```
+**Via Tunnelmole (public access):**
+```bash
+./manage.sh start --tunnel
+podman logs forgejo-tunnelmole  # Get public URL
+```
 
 ### Daily operations
 
 ```bash
-# Start all services including cache servers
-podman-compose --profile registry --profile hashserv --profile sstate-server up -d
-
-# Stop all services
-podman-compose --profile registry --profile tunnel --profile hashserv --profile sstate-server down
-
-# View logs
-podman-compose logs -f
-
-# Check running services
-podman-compose ps
-
-# Clean everything (WARNING: deletes all data)
-./cleanup.sh --clean-data
+./manage.sh start              # Start services
+./manage.sh start --tunnel     # Start with public access
+./manage.sh stop               # Stop services
+./manage.sh restart            # Restart services
+./manage.sh logs               # View all logs
+./manage.sh logs forgejo       # View specific service
+./manage.sh ps                 # Show running services
+./manage.sh clean              # Stop and remove all data
+./manage.sh cache-start        # Start hash equivalence + HTTP cache servers
+./manage.sh cache-stop         # Stop cache servers
 ```
 
 ## Configuration
@@ -237,8 +232,7 @@ podman-compose --profile registry restart
    ```
 3. Regenerate and restart:
    ```bash
-   ./generate-compose.sh
-   podman-compose up -d
+   ./setup.sh
    ```
 
 ## Runner Registration
@@ -252,24 +246,20 @@ To get a manual token:
 1. Access Forgejo → Site Administration → Actions → Runners
 2. Click "Create new Runner" and copy the token
 3. Set `FORGEJO_RUNNER_TOKEN` in `.env`
-4. Restart runners: `podman-compose restart $(podman-compose ps --services | grep runner)`
+4. Restart: `./manage.sh restart`
 
 ## Directory Structure
 
 ```
 .
 ├── docker-compose.yml          # Core services (forgejo, registry, tunnelmole, hashserv, sstate-server)
-├── docker-compose.override.yml # Generated runner services (from generate-compose.sh)
+├── docker-compose.override.yml # Generated runner services (from setup.sh)
 ├── .env.example                # Configuration template
 ├── .env                        # Your configuration (gitignored)
 ├── Dockerfile.yocto-runner-*   # Runner images (ubuntu, debian, fedora, crops)
-├── generate-compose.sh         # Generates runner services from RUNNERS env var
-├── start.sh                    # Start services with access info
-├── setup-forgejo.sh            # Create admin user
-├── register-runner.sh          # Manual runner registration helper
-├── runner-entrypoint.sh        # Runner container entrypoint
-├── runner-entrypoint-crops.sh  # CROPS runner entrypoint
-├── cleanup.sh                  # Stop services, optionally remove data
+├── setup.sh                    # One-time setup: generate config, start services, create admin
+├── manage.sh                   # Daily operations: start, stop, logs, clean
+├── runner-entrypoint.sh        # Runner container entrypoint (handles all runner types)
 ├── nginx-sstate.conf           # Nginx config for sstate/downloads server
 ├── registry-htpasswd           # Registry auth file
 ├── sstate-htpasswd             # Sstate server auth file
@@ -287,12 +277,12 @@ To get a manual token:
 ## Troubleshooting
 
 **Runner not registering:**
-- Check logs: `podman-compose logs <runner-service-name>`
+- Check logs: `./manage.sh logs <runner-service-name>`
 - Verify admin credentials match Forgejo setup
-- Try manual token registration via `./register-runner.sh`
+- Try manual token registration (see Runner Registration section)
 
 **Registry connection issues:**
-- Ensure registry is running: `podman-compose ps registry`
+- Ensure registry is running: `./manage.sh ps`
 - Check `REGISTRY_URL` in `.env` matches your setup
 - For external registry, ensure it's accessible from the Podman network
 
@@ -302,7 +292,7 @@ To get a manual token:
 - Review runner logs for specific errors
 
 **Tunnelmole not working:**
-- Check logs: `podman-compose logs tunnelmole`
+- Check logs: `./manage.sh logs tunnelmole`
 - Ensure forgejo service is running
 - Free tier has bandwidth limits
 
